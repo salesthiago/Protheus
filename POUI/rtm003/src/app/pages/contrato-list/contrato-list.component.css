@@ -1,0 +1,12 @@
+.rtm003-header-acoes {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+.rtm003-modal-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}

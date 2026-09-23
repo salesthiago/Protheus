@@ -1,0 +1,8 @@
+/* Cancelar/Salvar agora sao acoes no topo da po-page-list -- mesma mudanca de
+   contrato-form.component.css (pedido do usuario 2026-08-11, o rodape fixo cobria o botao
+   "Adicionar Item"). Mantem so uma folga pequena de fim de pagina, nao mais o compensador de
+   rodape fixo (96px). */
+po-page-list {
+  display: block;
+  padding-bottom: 24px;
+}

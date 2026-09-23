@@ -1,0 +1,47 @@
+api:
+  base_url: http://177.136.201.210:8086/rest
+  password: Eopera@213;
+  tenant_id: '01'
+  timeout_seconds: 30
+  username: eopera
+enabled: true
+log:
+  backup_count: 5
+  directory: logs
+  filename: sync_aterro.log
+  level: ERROR
+  max_bytes: 10485760
+njh_xclvl: ''
+source_db:
+  clvl: '0102'
+  empresa: '99'
+  filial: '01  '
+  mysql:
+    charset: utf8mb4
+    database: nome_do_banco
+    host: localhost
+    password: senha_db
+    port: 3306
+    username: root
+  postgres:
+    database: aterro
+    host: localhost
+    password: postgres
+    port: 5432
+    username: postgres
+  sqlserver:
+    database: NOME_DO_BANCO
+    driver: ODBC Driver 17 for SQL Server
+    password: senha_db
+    server: SERVIDOR\INSTANCIA
+    trusted_connection: false
+    username: usuario_db
+  table_case: upper
+  type: postgres
+sync:
+  batch_size: 50
+  interval_seconds: 300
+  recheck_days: 30
+  retry_attempts: 3
+  retry_delay_seconds: 10
+  state_db_filename: sync_state.sqlite

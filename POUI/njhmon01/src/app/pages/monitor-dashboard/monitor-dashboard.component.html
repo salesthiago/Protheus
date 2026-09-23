@@ -1,0 +1,39 @@
+<po-page-default p-title="Monitor de Pesagens - Filial Matriz" [p-actions]="pageActions">
+
+  <p class="info-atualizacao">
+    @if (atualizadoEm) {
+      Atualizado em {{ atualizadoEm }} (dados do servidor: {{ geradoEm }}) &mdash; atualiza automaticamente a cada 1 minuto.
+    }
+  </p>
+
+  @if (erro) {
+    <po-widget p-title="Erro" p-tag="FALHA" p-tag-type="danger">
+      {{ erro }}
+    </po-widget>
+  }
+
+  @if (!loading && !erro && items.length === 0) {
+    <po-widget p-title="Nenhum registro encontrado">
+      Nao ha pesagens lancadas na NJH para a filial matriz.
+    </po-widget>
+  }
+
+  <div class="cards-grid">
+    @for (item of items; track item.cc) {
+      <po-widget
+        [p-title]="item.descricao + ' (' + item.cc + ')'"
+        [p-tag]="atrasado(item) ? 'ATRASADO' : 'EM DIA'"
+        [p-tag-type]="atrasado(item) ? 'danger' : 'success'"
+        [class.card-atraso]="atrasado(item)">
+        <div class="card-conteudo">
+          <p class="card-linha"><strong>Ultimo ticket:</strong> {{ item.ultimoTicket }}</p>
+          <p class="card-linha"><strong>Ultima pesagem:</strong> {{ item.data }} {{ item.hora }}</p>
+          <p class="card-horas" [class.texto-alerta]="atrasado(item)">
+            Ha {{ item.horasDecorridas }}h sem nova pesagem
+          </p>
+        </div>
+      </po-widget>
+    }
+  </div>
+
+</po-page-default>

@@ -1,0 +1,14 @@
+.rtm002-buscar-btn {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.5rem;
+}
+
+.rtm002-cronograma {
+  margin-top: 1.5rem;
+}
+
+.rtm002-cronograma-titulo {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}

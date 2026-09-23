@@ -1,0 +1,32 @@
+/* .rtm002-limpar, .rtm002-info-box/-icon/-item, .rtm002-table-scroll e .rtm002-footer
+   estao em styles.css (global) -- compartilhadas com pages/exportar-medicao. */
+
+.rtm002-buscar-btn {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.5rem;
+}
+
+.rtm002-resumo-medicao {
+  display: flex;
+  justify-content: flex-end;
+  margin: 1rem 0;
+}
+
+.rtm002-tes-resultado {
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.rtm002-tes-resultado tr {
+  cursor: pointer;
+}
+
+.rtm002-tes-resultado tr:hover {
+  background-color: var(--color-brand-01-lightest, #eaf3fb);
+}
+
+.rtm002-tes-resultado td {
+  padding: 0.4rem 0.25rem;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+}

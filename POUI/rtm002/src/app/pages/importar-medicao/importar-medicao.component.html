@@ -1,0 +1,119 @@
+<po-page-list p-title="Importação de Medição de Contrato">
+  <p>O contrato posicionado é carregado automaticamente. Selecione o arquivo com as quantidades medidas (Planilha, Item, Produto e Quantidade).</p>
+
+  <div class="po-row">
+    <div class="po-md-3">
+      <po-input p-label="Contrato" name="numContrato" [(ngModel)]="numContrato" (keyup.enter)="buscarContrato()"></po-input>
+    </div>
+    <div class="po-md-3">
+      <po-input p-label="Revisão" name="revisao" [(ngModel)]="revisao" (keyup.enter)="buscarContrato()"></po-input>
+    </div>
+    <div class="po-md-3 rtm002-buscar-btn">
+      <po-button p-label="Buscar" p-kind="primary" [p-loading]="buscando" (p-click)="buscarContrato()"></po-button>
+    </div>
+    <div class="po-md-3" *ngIf="contratoCarregado">
+      <div class="rtm002-limpar">
+        <po-button p-label="Limpar" p-kind="link" [p-icon]="iconClear" (p-click)="limpar()"></po-button>
+      </div>
+    </div>
+  </div>
+
+  <div class="rtm002-info-box" *ngIf="contratoCarregado">
+    <po-icon [p-icon]="iconInfo" class="rtm002-info-icon"></po-icon>
+
+    <po-info class="rtm002-info-item" p-label="Contrato" [p-value]="numContrato + ' / ' + revisao"></po-info>
+
+    <po-info
+      *ngIf="pessoaOptions.length <= 1"
+      class="rtm002-info-item"
+      [p-label]="labelPessoa"
+      [p-value]="pessoaOptions[0]?.label ?? '-'">
+    </po-info>
+
+    <po-select
+      *ngIf="pessoaOptions.length > 1"
+      class="rtm002-info-item"
+      [p-label]="labelPessoa"
+      [p-options]="pessoaOptions"
+      name="pessoaSelecionada"
+      [ngModel]="pessoaSelecionada"
+      (ngModelChange)="pessoaSelecionada = $event">
+    </po-select>
+
+    <po-select
+      class="rtm002-info-item"
+      p-label="Competência"
+      [p-options]="competenciaOptions"
+      name="competenciaSelecionada"
+      [ngModel]="competenciaSelecionada"
+      (ngModelChange)="competenciaSelecionada = $event">
+    </po-select>
+
+    <po-info class="rtm002-info-item" p-label="Saldo do Contrato" [p-value]="(saldoContrato | number: '1.2-2') ?? ''"></po-info>
+  </div>
+
+  <div class="po-row" *ngIf="contratoCarregado">
+    <div class="po-md-6">
+      <label for="arquivoCsv">Arquivo com as quantidades medidas (Planilha, Item, Produto, Quantidade -- TES e CC opcionais)</label>
+      <input id="arquivoCsv" type="file" accept=".csv" (change)="onArquivoSelecionado($event)" />
+    </div>
+  </div>
+
+  <div class="rtm002-resumo-medicao" *ngIf="linhas.length > 0">
+    <po-info p-label="Valor Total da Medição" [p-value]="(valorTotalMedicao | number: '1.2-2') ?? ''"></po-info>
+  </div>
+
+  <div class="rtm002-table-scroll">
+    <po-table
+      *ngIf="linhas.length > 0"
+      p-title="Itens do arquivo importado"
+      [p-columns]="tableColumns"
+      [p-items]="linhas"
+      [p-actions]="acoesGrid"
+      [p-loading]="carregandoItens"
+      [p-height]="400"
+      [p-striped]="true">
+      <ng-template p-table-cell-template let-column="column" let-row="row">
+        <po-input
+          *ngIf="column.property === colunaTes"
+          [ngModel]="row[colunaTes]"
+          p-readonly="true"
+          p-size="small"
+          (click)="abrirBuscaTes(row)">
+        </po-input>
+        <po-number
+          *ngIf="column.property === colunaQuantidade"
+          [ngModel]="row[colunaQuantidade] ? +row[colunaQuantidade] : null"
+          p-size="small"
+          (ngModelChange)="onQuantidadeAlterada(row, $event)">
+        </po-number>
+      </ng-template>
+    </po-table>
+  </div>
+
+  <po-modal #modalTes p-title="Selecionar TES" p-size="md">
+    <input type="text" [(ngModel)]="filtroTes" name="filtroTes" (keyup)="buscarTes()" placeholder="Código ou descrição" />
+    <table class="rtm002-tes-resultado">
+      <tbody>
+        <tr *ngFor="let item of resultadosTes" (click)="selecionarTes(item)">
+          <td>{{ item.label }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </po-modal>
+</po-page-list>
+
+<!-- position: fixed -- fica sempre visivel, sem depender de rolar a area de conteudo do
+     po-page-list (ver nota em styles.css sobre .po-page). Cancelar disponivel desde o
+     inicio (mesmo antes de importar um arquivo); Importar so habilita com dados carregados. -->
+<div class="rtm002-footer">
+  <po-button p-label="Cancelar" p-kind="secondary" [p-disabled]="gerandoMedicao" (p-click)="cancelar()"></po-button>
+  <po-button
+    p-label="Importar"
+    p-kind="primary"
+    [p-icon]="iconUpload"
+    [p-loading]="gerandoMedicao"
+    [p-disabled]="linhas.length === 0 || gerandoMedicao"
+    (p-click)="importar()">
+  </po-button>
+</div>

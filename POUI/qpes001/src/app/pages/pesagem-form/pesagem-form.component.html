@@ -1,0 +1,130 @@
+@if (isView) {
+  <po-page-default [p-title]="titulo" [p-actions]="viewActions">
+    <ng-container *ngTemplateOutlet="cabecalhoView"></ng-container>
+    <ng-container *ngTemplateOutlet="campos"></ng-container>
+  </po-page-default>
+} @else {
+  <po-page-edit [p-title]="titulo" [p-disable-submit]="saving" (p-save)="salvar()" (p-cancel)="voltar()">
+    <ng-container *ngTemplateOutlet="campos"></ng-container>
+  </po-page-edit>
+}
+
+<ng-template #cabecalhoView>
+  <div class="po-row">
+    <po-input class="po-md-3" name="ticket" p-label="Ticket" [ngModel]="ticket" [p-disabled]="'true'"></po-input>
+    <po-input class="po-md-3" name="data" p-label="Data" [ngModel]="data" [p-disabled]="'true'"></po-input>
+    <po-input class="po-md-3" name="statusLabel" p-label="Status" [ngModel]="statusLabel" [p-disabled]="'true'"></po-input>
+    <po-input class="po-md-3" name="operador" p-label="Operador" [ngModel]="operador" [p-disabled]="'true'"></po-input>
+  </div>
+</ng-template>
+
+<ng-template #campos>
+  <div class="destaque po-row">
+    <po-combo
+      class="po-md-4"
+      name="placa"
+      p-label="Placa"
+      p-field-value="value"
+      p-field-label="label"
+      [p-filter-service]="placaFilter"
+      [p-filter-minlength]="1"
+      [p-emit-object-value]="true"
+      [ngModel]="model.placa"
+      (ngModelChange)="model.placa = $event"
+      [p-disabled]="isView"
+      [p-required]="true"
+      p-placeholder="Digite a placa"
+      (p-change)="onPlacaSelecionada($event)">
+    </po-combo>
+
+    <po-lookup
+      class="po-md-8"
+      name="produto"
+      p-label="Produto"
+      p-field-value="value"
+      p-field-label="label"
+      [p-columns]="lookupColumns"
+      [p-filter-service]="produtoFilter"
+      [ngModel]="model.codPro"
+      (ngModelChange)="model.codPro = $event"
+      [p-disabled]="isView"
+      [p-required]="true"
+      (p-selected)="onProdutoSelecionado($event)">
+    </po-lookup>
+  </div>
+  @if (!isView) {
+    <p class="dica-destaque">Selecionando a Placa, Motorista, Produto, Rota, Cliente e Fornecedor são preenchidos automaticamente.</p>
+  }
+
+  <div class="po-row">
+    <po-input class="po-md-6" name="motorista" p-label="Motorista" [(ngModel)]="model.motorista" [p-disabled]="isView ? 'true' : 'false'" [p-required]="true">
+    </po-input>
+
+    <po-input class="po-md-6" name="rota" p-label="Rota" [(ngModel)]="model.rota" [p-disabled]="isView ? 'true' : 'false'">
+    </po-input>
+  </div>
+
+  <div class="po-row">
+    <po-input class="po-md-6" name="cliente" p-label="Cliente" [(ngModel)]="model.cliente" [p-disabled]="isView ? 'true' : 'false'">
+    </po-input>
+
+    <po-input class="po-md-6" name="fornecedor" p-label="Fornecedor" [(ngModel)]="model.fornecedor" [p-disabled]="isView ? 'true' : 'false'">
+    </po-input>
+  </div>
+
+  <div class="destaque peso-box po-row">
+    <div class="po-md-4 peso-coluna">
+      <span class="peso-titulo">Peso Entrada (KG)</span>
+
+      @if (peso1 > 0) {
+        <div class="peso-valor">{{ peso1 }}</div>
+        @if (isView) {
+          <span class="peso-sub">{{ dataEnt }} {{ horaEnt }}</span>
+        }
+      } @else if (podeCapturar) {
+        @if (pesando1) {
+          <po-button p-label="Capturando..." p-kind="secondary" [p-loading]="true" [p-disabled]="true"></po-button>
+        } @else if (balancaIndisp1) {
+          <po-number class="peso-manual" name="pesoManual1" p-label="Peso digitado" [(ngModel)]="pesoManual1"></po-number>
+          <po-button p-label="Salvar Peso Digitado" p-kind="primary" (p-click)="confirmarPesoManual('1')"></po-button>
+        } @else {
+          <po-button p-label="Pesar Entrada" p-kind="primary" p-icon="an an-scales" (p-click)="pesarEntrada()"></po-button>
+        }
+      } @else {
+        <span class="peso-sub">Não pesado</span>
+      }
+    </div>
+
+    <div class="po-md-4 peso-coluna">
+      <span class="peso-titulo">Peso Saída (KG)</span>
+
+      @if (peso2 > 0) {
+        <div class="peso-valor">{{ peso2 }}</div>
+        @if (isView) {
+          <span class="peso-sub">{{ dataSai }} {{ horaSai }}</span>
+        }
+      } @else if (podeCapturar) {
+        @if (pesando2) {
+          <po-button p-label="Capturando..." p-kind="secondary" [p-loading]="true" [p-disabled]="true"></po-button>
+        } @else if (balancaIndisp2) {
+          <po-number class="peso-manual" name="pesoManual2" p-label="Peso digitado" [(ngModel)]="pesoManual2"></po-number>
+          <po-button p-label="Salvar Peso Digitado" p-kind="primary" (p-click)="confirmarPesoManual('2')"></po-button>
+        } @else {
+          <po-button p-label="Pesar Saída" p-kind="primary" p-icon="an an-scales" (p-click)="pesarSaida()"></po-button>
+        }
+      } @else {
+        <span class="peso-sub">Não pesado</span>
+      }
+    </div>
+
+    <div class="po-md-4 peso-coluna">
+      <span class="peso-titulo">Peso Líquido (KG)</span>
+      <div class="peso-valor peso-liquido">{{ pesoLiquido }}</div>
+    </div>
+  </div>
+
+  <div class="po-row">
+    <po-textarea class="po-md-12" name="obs" p-label="Observação / Tipo de Carga" [(ngModel)]="model.obs" [p-disabled]="isView ? 'true' : 'false'">
+    </po-textarea>
+  </div>
+</ng-template>

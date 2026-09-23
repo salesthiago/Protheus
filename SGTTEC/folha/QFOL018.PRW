@@ -1,0 +1,225 @@
+/** {Protheus.doc} QACOM005
+Cadastro SRA com filtro de funcionários ativos Dif de Demitidos
+
+Sendo:
+@Uso: Projeto Quebec
+@Origem: 	
+Reservado SZ9
+
+*/
+
+#Include "Totvs.ch"
+#Include "FwMvcDef.ch"
+
+User Function QFOL018()
+
+Private oBrowse 	:= FwMBrowse():New()				//Variavel de Browse 
+
+//Alias do Browse
+oBrowse:SetAlias('SRA')
+//Descrição da Parte Superior Esquerda do Browse
+oBrowse:SetDescripton("Cadastro de Funcionários") 
+
+//Adiciona Legenda
+oBrowse:AddLegend( "SRA->RA_SITFOLH == ' '", "GREEN"	, "Ativo")
+oBrowse:AddLegend( "SRA->RA_SITFOLH == 'D'", "RED"		, "Demitido")
+oBrowse:AddLegend( "SRA->RA_SITFOLH == 'A'", "YELLOW"	, "Afastado")
+oBrowse:AddLegend( "SRA->RA_SITFOLH == 'F'", "BLUE"		, "Férias")
+oBrowse:AddLegend( "SRA->RA_SITFOLH == 'T'", "BLACK"	, "Transferido")
+
+//Habilita os Botões Ambiente e WalkThru
+oBrowse:SetWalkThru(.T.)
+
+//Desabilita os Detalhes da parte inferior do Browse
+oBrowse:DisableDetails()
+          	
+//Ativa o Browse
+oBrowse:Activate()
+
+Return
+
+Static Function MenuDef()
+Local aMenu :=	{}
+	
+ADD OPTION aMenu TITLE 'Pesquisar'      ACTION 'PesqBrw'       		OPERATION 1 ACCESS 0
+//ADD OPTION aMenu TITLE 'Visualizar'     ACTION 'VIEWDEF.QFOL018'	OPERATION 2 ACCESS 0
+//ADD OPTION aMenu TITLE 'Incluir'        ACTION 'VIEWDEF.QFOL009' 	OPERATION 3 ACCESS 0
+//ADD OPTION aMenu TITLE 'Alterar'        ACTION 'VIEWDEF.QFOL009' 	OPERATION 4 ACCESS 0
+//ADD OPTION aMenu TITLE 'Excluir'        ACTION 'VIEWDEF.QFOL009' 	OPERATION 5 ACCESS 0
+ADD OPTION aMenu TITLE 'Imprimir'       ACTION 'VIEWDEF.QFOL018'	OPERATION 6 ACCESS 0
+	
+Return(aMenu)
+
+Static Function ModelDef()
+//Retorna a Estrutura do Alias passado como Parametro (1=Model,2=View)
+Local oStruct	:=	FWFormStruct(1,"SRA") 
+Local oModel
+
+//Instancia do Objeto de Modelo de Dados
+oModel	:=	MpFormModel():New('QFOL018A',/*Pré-Validação*/ ,/*Pos-Validacao*/;
+                                       ,/*Commit*/,/*Cancel*/)
+
+//Adiciona um modelo de Formulario de Cadastro Similar à Enchoice ou Msmget
+oModel:AddFields('SRA_MASTER', /*cOwner*/, oStruct, /*bPreValidacao*/;
+                       , /*bPosValidacao*/, /*bCarga*/ )
+
+//Adiciona Descricao do Modelo de Dados
+oModel:SetDescription( "Cadastro de funcionáros" )
+
+//Adiciona Descricao do Componente do Modelo de Dados      
+oModel:GetModel( 'SRA_MASTER' ):SetDescription( "Cadastro de funcionáros")
+
+//A Chave Primária é obrigatória, caso não tenha defina um array vazio
+//oModel:SetPrimaryKey({'RA_FILIAL','RA_CODSER'})  
+
+//oModel:GetModel('SRA_MASTER'):SetLoadFilter(, " RA_SITFOLH NOT IN ('D','T') " )
+    
+Return(oModel)
+
+/* VIEW */
+Static Function ViewDef()
+Local oStruct	:=	FWFormStruct(2,"SRA", {|x|chkCampo('SRA',alltrim(x))}) 	//Retorna a Estrutura do Alias passado
+                                            // como Parametro (1=Model,2=View)
+Local oModel	:=	FwLoadModel('QFOL013')	//Retorna o Objeto do Modelo de Dados 
+Local oView		:=	FwFormView():New()      //Instancia do Objeto de Visualização
+
+//Define o Modelo sobre qual a Visualizacao sera utilizada
+oView:SetModel(oModel)	
+
+//oView:SetFieldAction("Z3_DOC" 	, {|oView, oModel| fCompDOC(oView, oModel)})
+
+//Vincula o Objeto visual de Cadastro com o modelo 
+oView:AddField( 'SRA_VIEW', oStruct, 'SRA_MASTER')
+
+//Define o Preenchimento da Janela
+oView:CreateHorizontalBox( 'ID_BOX_ALL'  , 100 )
+
+// Relaciona o ID da View com o "box" para exibicao
+oView:SetOwnerView( 'SRA_VIEW', 'ID_BOX_ALL' )
+
+Return(oView)                       
+
+
+/*
+___________________________________________________________________________
+¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦
+¦¦+-----------------------------------------------------------------------+¦¦
+¦¦¦Programa  ¦ ANFF004A.prw ¦ Autor ¦ Sinval         ¦ Data ¦    08/2021  ¦¦¦
+¦¦+----------+------------------------------------------------------------¦¦¦
+¦¦¦Descriçào ¦ Ponto de Entrada da Rotina                                 ¦¦¦
+¦¦¦			 ¦ 															  ¦¦¦
+¦¦¦          ¦ 															  ¦¦¦
+¦¦+----------+------------------------------------------------------------¦¦¦
+¦¦¦Objetivo  ¦                                            				  ¦¦¦
+¦¦+-----------------------------------------------------------------------+¦¦
+¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦
+¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯¯
+*/
+
+/*
+IDs dos Pontos de Entrada
+-------------------------
+
+MODELPRE 			Antes da alteração de qualquer campo do modelo. (requer retorno lógico)
+MODELPOS 			Na validação total do modelo (requer retorno lógico)
+
+FORMPRE 			Antes da alteração de qualquer campo do formulário. (requer retorno lógico)
+FORMPOS 			Na validação total do formulário (requer retorno lógico)
+
+FORMLINEPRE 		Antes da alteração da linha do formulário GRID. (requer retorno lógico)
+FORMLINEPOS 		Na validação total da linha do formulário GRID. (requer retorno lógico)
+
+MODELCOMMITTTS 		Apos a gravação total do modelo e dentro da transação
+MODELCOMMITNTTS 	Apos a gravação total do modelo e fora da transação
+
+FORMCOMMITTTSPRE 	Antes da gravação da tabela do formulário
+FORMCOMMITTTSPOS 	Apos a gravação da tabela do formulário
+
+FORMCANCEL 			No cancelamento do botão.
+
+BUTTONBAR 			Para acrescentar botoes a ControlBar
+
+MODELVLDACTIVE 		Para validar se deve ou nao ativar o Model
+
+Parametros passados para os pontos de entrada:
+PARAMIXB[1] - Objeto do formulário ou model, conforme o caso.
+PARAMIXB[2] - Id do local de execução do ponto de entrada
+PARAMIXB[3] - Id do formulário
+
+Se for uma FORMGRID
+PARAMIXB[4] - Linha da Grid
+PARAMIXB[5] - Acao da Grid
+*/
+
+User Function QFOL018A
+
+	Local nQtdElIXB		:= 0
+	Local oObj			:= ''
+	Local cIdPonto		:= ''
+	Local cIdModel		:= ''
+	Local cClasse		:= ''
+	Local nOper 		:= 0          
+	Local xRet			:= .T.   
+    
+	If PARAMIXB <> Nil
+		nQtdElIXB	:= Len(PARAMIXB)
+		oObj 		:= PARAMIXB[1]
+		cIdPonto	:= PARAMIXB[2]
+		cIdModel	:= PARAMIXB[3]
+		cClasse 	:= Iif(oObj<>Nil, oObj:ClassName(), '')	// Nome da classe utilizada na rotina (FWFORMFIELD - Formulário, FWFORMGRID - Grid)
+		nOper 		:= oObj:getOperation()  
+
+		If cIdPonto == 'MODELVLDACTIVE' 
+        
+			/*
+            if nOper == 3 .or. nOper == 4
+                if !RetCodUsr() $ GETMV("MV_XMVFOLD")
+                    MsgInfo("Usuário sem Permissão para Acessar a Rotina","Atenção")
+                    xRet := .F.
+                Endif
+            Endif
+			*/
+
+		ElseIf cIdPonto == 'BUTTONBAR'
+
+		ElseIf cIdPonto == 'FORMPRE'
+
+		ElseIf cIdPonto == 'FORMPOS'
+				
+		ElseIf cIdPonto == 'FORMLINEPRE'    
+		
+		ElseIf cIdPonto == 'FORMLINEPOS'
+				
+		ElseIf cIdPonto == 'MODELPRE'
+
+		ElseIf cIdPonto == 'MODELPOS'
+		
+		ElseIf cIdPonto == 'FORMCOMMITTTSPRE'         
+				
+		ElseIf cIdPonto == 'FORMCOMMITTTSPOS'
+
+		ElseIf cIdPonto == 'MODELCOMMITTTS'
+
+		ElseIf cIdPonto == 'MODELCOMMITNTTS'
+
+  		ElseIf cIdPonto == 'MODELCANCEL'
+
+		EndIf
+
+	EndIf
+
+Return xRet
+
+
+static function chkCampo(cAlias,cCampo)
+Local lReturn := .T.
+
+if cAlias == "SRA"
+	if alltrim(cCampo) $ "RA_FILIAL-RA_MAT-RA_NOME-RA_CC-RA_DESCCC-RA_ADMISSA-RA_SITFOLH-RA_CODFUNC-RA_DESCFUN-RA_DEPTO-RA_DDEPTO-RA_TNOTRAB-RA_DESCTUR-RA_DEMISSA"
+		lReturn := .T.
+	else
+		lReturn := .F.	
+	endif
+endif
+
+return(lReturn)

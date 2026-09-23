@@ -1,0 +1,26 @@
+<po-page-list [p-title]="'Nova Revisão — Contrato ' + numero + '/' + revisaoAtual" [p-actions]="acoesPage">
+  <div class="po-row">
+    <div class="po-md-4">
+      <po-select
+        p-label="Tipo de Revisão"
+        [p-options]="tipoRevisaoOptions"
+        name="tipoRevisao"
+        [ngModel]="tipoRevisao"
+        (ngModelChange)="onTipoRevisaoAlterado($event)">
+      </po-select>
+    </div>
+    <!-- Justificativa so faz sentido/e exigida em revisao de Reajuste de contrato (pedido do
+         usuario) -- nos demais 15 tipos o campo fica oculto. -->
+    <div class="po-md-8" *ngIf="tipoRevisao === TipoRevisao.Reajuste">
+      <po-input p-label="Justificativa" name="justificativa" [(ngModel)]="justificativa" p-required="true"></po-input>
+    </div>
+  </div>
+
+  <h3>Planilha / Itens (opcional)</h3>
+  <div class="po-row">
+    <div class="po-md-4">
+      <po-input p-label="Tipo de Planilha (CNA_TIPPLA)" name="tipoPlanilha" [(ngModel)]="tipoPlanilha"></po-input>
+    </div>
+  </div>
+  <app-item-grid [itens]="itens" (itensChange)="onItensAlterados($event)"></app-item-grid>
+</po-page-list>

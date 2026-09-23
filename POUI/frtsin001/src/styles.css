@@ -1,0 +1,19 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* Este app nao usa po-menu (embarcado via FwCallApp, sem navegacao lateral) --
+   po-theme-default.min.css reserva espaco de menu em duas classes distintas,
+   incondicionalmente (mesmo sem <po-menu> no DOM): o po-toolbar (a barra azul)
+   e o po-page (div interno que po-page/po-page-list sempre renderizam --
+   <div class="po-page"><ng-content></ng-content></div>). Sem os dois
+   overrides sobra um gutter fantasma do lado esquerdo (mesmo bug encontrado e
+   corrigido no POUI/rtm002 e POUI/rtm003). !important no .po-page porque o
+   seletor original da biblioteca tem maior especificidade que um ".po-page". */
+.po-toolbar {
+  margin-left: 0;
+  width: 100%;
+}
+
+.po-page {
+  margin-left: 0 !important;
+  width: 100% !important;
+}

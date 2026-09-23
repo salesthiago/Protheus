@@ -1,0 +1,44 @@
+.frtsin-import-passo {
+  margin-top: 1.5rem;
+}
+
+.frtsin-ajuda {
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.frtsin-arquivo {
+  margin-top: 0.75rem;
+}
+
+.frtsin-import-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.frtsin-resumo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.frtsin-card {
+  min-width: 150px;
+  text-align: center;
+}
+
+.frtsin-num {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.frtsin-ok {
+  color: var(--color-success, #107048);
+}
+
+.frtsin-err {
+  color: var(--color-danger, #c64840);
+}

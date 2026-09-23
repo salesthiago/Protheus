@@ -1,0 +1,94 @@
+<po-page-default p-title="Importar Planilha de Sinistros">
+  <po-stepper [p-step]="passo">
+    <po-step p-label="Arquivo"></po-step>
+    <po-step p-label="Simulação"></po-step>
+    <po-step p-label="Resultado"></po-step>
+  </po-stepper>
+
+  <!-- PASSO 1 -->
+  <div *ngIf="passo === 1" class="frtsin-import-passo">
+    <po-container>
+      <p class="frtsin-ajuda">
+        Selecione o arquivo <strong>sinistros 2026.csv</strong> (separador <code>;</code>, codificação ANSI/CP1252).
+        A coluna <em>UNIDADE</em> é ignorada — todos os registros entram na filial em que você está logado.
+      </p>
+      <input type="file" accept=".csv,text/csv" (change)="aoSelecionarArquivo($event)" />
+      <p *ngIf="nomeArquivo" class="frtsin-arquivo">Arquivo: <strong>{{ nomeArquivo }}</strong></p>
+    </po-container>
+
+    <div class="frtsin-import-acoes">
+      <po-button p-label="Cancelar" p-kind="secondary" (p-click)="concluir()"></po-button>
+      <po-button
+        p-label="Simular"
+        p-kind="primary"
+        [p-loading]="processando"
+        [p-disabled]="!conteudoBase64"
+        (p-click)="simular()">
+      </po-button>
+    </div>
+  </div>
+
+  <!-- PASSO 2 -->
+  <div *ngIf="passo === 2 && simulacao" class="frtsin-import-passo">
+    <div class="frtsin-resumo">
+      <po-widget p-title="A criar" class="frtsin-card">
+        <span class="frtsin-num frtsin-ok">{{ simulacao.resumo.paraCriar }}</span>
+      </po-widget>
+      <po-widget p-title="Duplicadas" class="frtsin-card">
+        <span class="frtsin-num">{{ simulacao.resumo.duplicadas }}</span>
+      </po-widget>
+      <po-widget p-title="Com erro" class="frtsin-card">
+        <span class="frtsin-num frtsin-err">{{ simulacao.resumo.comErro }}</span>
+      </po-widget>
+      <po-widget p-title="Total de linhas" class="frtsin-card">
+        <span class="frtsin-num">{{ simulacao.totalLinhas }}</span>
+      </po-widget>
+    </div>
+
+    <po-table
+      [p-columns]="colunasLinhas"
+      [p-items]="linhasSimulacao"
+      [p-striped]="true"
+      [p-height]="420">
+    </po-table>
+
+    <div class="frtsin-import-acoes">
+      <po-button p-label="Voltar" p-kind="secondary" (p-click)="voltarParaArquivo()"></po-button>
+      <po-button
+        p-label="Efetivar Importação"
+        p-kind="primary"
+        [p-loading]="processando"
+        [p-disabled]="simulacao.resumo.paraCriar === 0"
+        (p-click)="efetivar()">
+      </po-button>
+    </div>
+  </div>
+
+  <!-- PASSO 3 -->
+  <div *ngIf="passo === 3 && resultado" class="frtsin-import-passo">
+    <div class="frtsin-resumo">
+      <po-widget p-title="Importadas" class="frtsin-card">
+        <span class="frtsin-num frtsin-ok">{{ resultado.resumo.importadas }}</span>
+      </po-widget>
+      <po-widget p-title="Duplicadas" class="frtsin-card">
+        <span class="frtsin-num">{{ resultado.resumo.duplicadas }}</span>
+      </po-widget>
+      <po-widget p-title="Com erro" class="frtsin-card">
+        <span class="frtsin-num frtsin-err">{{ resultado.resumo.comErro }}</span>
+      </po-widget>
+    </div>
+
+    <h4 *ngIf="resultado.erros?.length">Linhas não importadas</h4>
+    <po-table
+      *ngIf="resultado.erros?.length"
+      [p-columns]="colunasErros"
+      [p-items]="resultado.erros"
+      [p-striped]="true"
+      [p-height]="320">
+    </po-table>
+
+    <div class="frtsin-import-acoes">
+      <po-button p-label="Concluir" p-kind="primary" (p-click)="concluir()"></po-button>
+    </div>
+  </div>
+</po-page-default>

@@ -1,0 +1,233 @@
+<po-page-default
+  [p-title]="modoNovo ? 'Novo Sinistro' : ('Sinistro ' + numero)"
+  [p-breadcrumb]="breadcrumb">
+
+  <po-tabs>
+    <!-- ========================= SINISTRO ========================= -->
+    <po-tab p-label="Sinistro" [p-active]="true">
+      <div class="po-row">
+        <po-datepicker class="po-md-3" p-label="Data do Sinistro" p-required name="data"
+          [(ngModel)]="form.data"></po-datepicker>
+        <po-input class="po-md-2" p-label="Hora" p-mask="99:99" name="hora" [(ngModel)]="form.hora"></po-input>
+        <po-select class="po-md-3" p-label="Evento" [p-options]="eventoOptions" name="evento"
+          [ngModel]="form.evento" (ngModelChange)="form.evento = $event"></po-select>
+        <po-select class="po-md-4" p-label="Gravidade" [p-options]="gravidadeOptions" name="gravidade"
+          [ngModel]="form.gravidade" (ngModelChange)="form.gravidade = $event"></po-select>
+      </div>
+
+      <div class="po-row">
+        <po-input class="po-md-3" p-label="Bem (placa / série / código)" name="chaveBem"
+          [(ngModel)]="chaveBem" [p-disabled]="!modoNovo"></po-input>
+        <div class="po-md-2 frtsin-btn-inline">
+          <po-button p-label="Buscar Bem" (p-click)="abrirBuscaBem()" [p-disabled]="!modoNovo"></po-button>
+        </div>
+        <po-input class="po-md-2" p-label="Placa" name="placa" [(ngModel)]="form.placa" p-disabled></po-input>
+        <po-input class="po-md-5" p-label="Descrição do Bem" name="nomeBem"
+          [ngModel]="sinistro?.nomeBem || ''" p-disabled></po-input>
+      </div>
+
+      <div class="po-row">
+        <po-select class="po-md-3" p-label="Condições do Tempo" [p-options]="tempoOptions" name="tempo"
+          [ngModel]="form.tempo" (ngModelChange)="form.tempo = $event"></po-select>
+        <po-select class="po-md-3" p-label="Traçado da Via" [p-options]="viaOptions" name="via"
+          [ngModel]="form.via" (ngModelChange)="form.via = $event"></po-select>
+        <po-select class="po-md-3" p-label="Período do Dia" [p-options]="periodoOptions" name="periodo"
+          [ngModel]="form.periodo" (ngModelChange)="form.periodo = $event"></po-select>
+        <po-select class="po-md-3" p-label="Mão de Direção" [p-options]="viadirOptions" name="maoDirecao"
+          [ngModel]="form.maoDirecao" (ngModelChange)="form.maoDirecao = $event"></po-select>
+      </div>
+
+      <div class="po-row">
+        <po-input class="po-md-6" p-label="Local do Acidente" name="local" [(ngModel)]="form.local"></po-input>
+        <po-input class="po-md-4" p-label="Cidade" name="cidade" [(ngModel)]="form.cidade"></po-input>
+        <po-input class="po-md-2" p-label="UF" p-mask="AA" name="uf" [(ngModel)]="form.uf"></po-input>
+      </div>
+
+      <div class="po-row">
+        <po-input class="po-md-3" p-label="Número do BO" name="numeroBO" [(ngModel)]="form.numeroBO"></po-input>
+        <po-input class="po-md-5" p-label="Departamento de Polícia" name="nomeDP" [(ngModel)]="form.nomeDP"></po-input>
+        <po-select class="po-md-2" p-label="Interrup. Viagem" [p-options]="simnaoOptions" name="interr"
+          [ngModel]="form.interrViagem" (ngModelChange)="form.interrViagem = $event"></po-select>
+        <po-select class="po-md-2" p-label="Nec. Guincho" [p-options]="simnaoOptions" name="guincho"
+          [ngModel]="form.necGuincho" (ngModelChange)="form.necGuincho = $event"></po-select>
+      </div>
+
+      <div class="po-row">
+        <po-select class="po-md-3" p-label="Danos à Frota" [p-options]="simnaoOptions" name="danos"
+          [ngModel]="form.danosFrota" (ngModelChange)="form.danosFrota = $event"></po-select>
+        <po-decimal class="po-md-3" p-label="Valor dos Danos" [p-decimals-length]="2" name="valorDanos"
+          [(ngModel)]="form.valorDanos"></po-decimal>
+        <po-select class="po-md-3" p-label="Terceiro Evadiu" [p-options]="simnaoOptions" name="tercEvadiu"
+          [ngModel]="form.terceiroEvadiu" (ngModelChange)="form.terceiroEvadiu = $event"></po-select>
+        <po-select class="po-md-3" p-label="Delito Concretizado" [p-options]="simnaoOptions" name="delito"
+          [ngModel]="form.delitoConcret" (ngModelChange)="form.delitoConcret = $event"></po-select>
+      </div>
+
+      <div class="po-row">
+        <po-select class="po-md-4" p-label="Status do Processo" [p-options]="statusOptions" name="status"
+          [ngModel]="form.status" (ngModelChange)="form.status = $event"></po-select>
+        <po-select class="po-md-4" p-label="Culpabilidade" [p-options]="culpaOptions" name="culpa"
+          [ngModel]="form.culpabilidade" (ngModelChange)="form.culpabilidade = $event"></po-select>
+        <po-input class="po-md-4" p-label="Nome do Culpado" name="culpadoNome" [(ngModel)]="form.culpadoNome"></po-input>
+      </div>
+
+      <div class="po-row">
+        <po-input class="po-md-3" p-label="Número do FOR" name="numeroFor" [(ngModel)]="form.numeroFor"></po-input>
+        <po-decimal class="po-md-3" p-label="Valor em Folha" [p-decimals-length]="2" name="valorFolha"
+          [(ngModel)]="form.valorFolha"></po-decimal>
+        <po-decimal class="po-md-3" p-label="Saldo a Descontar" [p-decimals-length]="2" name="valorSaldo"
+          [(ngModel)]="form.valorSaldo"></po-decimal>
+      </div>
+
+      <div class="po-row">
+        <po-textarea class="po-md-12" p-label="Descrição do Acidente" [p-rows]="3" name="descricao"
+          [(ngModel)]="form.descricao"></po-textarea>
+      </div>
+
+      <div class="frtsin-acoes">
+        <po-button p-label="Voltar" p-kind="secondary" (p-click)="voltar()"></po-button>
+        <po-button [p-label]="modoNovo ? 'Criar Sinistro' : 'Salvar'" p-kind="primary"
+          [p-loading]="salvando" (p-click)="salvar()"></po-button>
+      </div>
+    </po-tab>
+
+    <!-- ========================= VEICULOS ========================= -->
+    <po-tab p-label="Veículos" [p-disabled]="modoNovo">
+      <div class="frtsin-acoes-topo">
+        <po-button p-label="Adicionar Veículo" p-icon="po-icon-plus" (p-click)="novoVeiculo()"></po-button>
+      </div>
+      <po-table [p-columns]="colunasVeiculo" [p-items]="veiculos" [p-actions]="acoesVeiculo" [p-striped]="true"></po-table>
+    </po-tab>
+
+    <!-- ========================= TESTEMUNHAS ========================= -->
+    <po-tab p-label="Testemunhas" [p-disabled]="modoNovo">
+      <div class="frtsin-acoes-topo">
+        <po-button p-label="Adicionar Testemunha" p-icon="po-icon-plus" (p-click)="novaTestemunha()"></po-button>
+      </div>
+      <po-table [p-columns]="colunasTestemunha" [p-items]="testemunhas" [p-actions]="acoesTestemunha" [p-striped]="true"></po-table>
+    </po-tab>
+
+    <!-- ========================= VITIMAS ========================= -->
+    <po-tab p-label="Vítimas" [p-disabled]="modoNovo">
+      <div class="frtsin-acoes-topo">
+        <po-button p-label="Adicionar Vítima" p-icon="po-icon-plus" (p-click)="novaVitima()"></po-button>
+      </div>
+      <po-table [p-columns]="colunasVitima" [p-items]="vitimas" [p-actions]="acoesVitima" [p-striped]="true"></po-table>
+    </po-tab>
+
+    <!-- ========================= ANEXOS ========================= -->
+    <po-tab p-label="Anexos" [p-disabled]="modoNovo">
+      <p class="frtsin-ajuda">
+        Upload/download de fotos, termos e contratos entra na <strong>Fase E</strong>.
+        Abaixo, os anexos já registrados (TRI).
+      </p>
+      <po-table [p-columns]="colunasAnexo" [p-items]="anexos" [p-striped]="true"></po-table>
+    </po-tab>
+  </po-tabs>
+</po-page-default>
+
+<!-- ===================== MODAL BUSCA DE BEM ===================== -->
+<po-modal #modalBem p-title="Buscar Bem de Frota" p-size="lg">
+  <div class="po-row">
+    <po-input class="po-md-9" p-label="Placa, série, código ou descrição" name="filtroBem"
+      [(ngModel)]="filtroBem" (p-enter)="buscarBem()"></po-input>
+    <div class="po-md-3 frtsin-btn-inline">
+      <po-button p-label="Buscar" p-kind="primary" (p-click)="buscarBem()"></po-button>
+    </div>
+  </div>
+  <po-table [p-columns]="colunasBem" [p-items]="bensEncontrados" [p-selectable]="true"
+    (p-selected)="selecionarBem($event)" [p-height]="320"></po-table>
+</po-modal>
+
+<!-- ===================== MODAL VEICULO ===================== -->
+<po-modal #modalVeiculo p-title="Veículo Envolvido" p-size="lg">
+  <div class="po-row">
+    <po-select class="po-md-4" p-label="Origem" [p-options]="origemOptions" name="vOrigem"
+      [ngModel]="veiculoEdit.origem" (ngModelChange)="veiculoEdit.origem = $event"></po-select>
+    <po-input class="po-md-4" p-label="Placa" name="vPlaca" [(ngModel)]="veiculoEdit.placa"></po-input>
+    <po-select class="po-md-4" p-label="Danos?" [p-options]="simnaoOptions" name="vDanos"
+      [ngModel]="veiculoEdit.danos" (ngModelChange)="veiculoEdit.danos = $event"></po-select>
+  </div>
+  <div class="po-row">
+    <po-input class="po-md-6" p-label="Descrição do Veículo" name="vDesc" [(ngModel)]="veiculoEdit.descricao"></po-input>
+    <po-input class="po-md-6" p-label="Condutor" name="vCond" [(ngModel)]="veiculoEdit.condutor"></po-input>
+  </div>
+  <div class="po-row">
+    <po-input class="po-md-3" p-label="Matrícula (Quebec)" name="vMat" [(ngModel)]="veiculoEdit.matricula"></po-input>
+    <po-input class="po-md-3" p-label="CPF (Terceiro)" name="vCpf" [(ngModel)]="veiculoEdit.cpf"></po-input>
+    <po-input class="po-md-3" p-label="CNH" name="vCnh" [(ngModel)]="veiculoEdit.cnh"></po-input>
+    <po-input class="po-md-3" p-label="Telefone" name="vTel" [(ngModel)]="veiculoEdit.telefone"></po-input>
+  </div>
+  <div class="po-row">
+    <po-input class="po-md-6" p-label="Proprietário" name="vProp" [(ngModel)]="veiculoEdit.proprietario"></po-input>
+    <po-decimal class="po-md-3" p-label="Vlr. Prejuízo" [p-decimals-length]="2" name="vPrej"
+      [(ngModel)]="veiculoEdit.valorPrejuizo"></po-decimal>
+    <po-decimal class="po-md-3" p-label="Vlr. a Pagar Terceiro" [p-decimals-length]="2" name="vTer"
+      [(ngModel)]="veiculoEdit.valorTerceiro"></po-decimal>
+  </div>
+  <div class="po-row">
+    <po-input class="po-md-6" p-label="Seguradora" name="vSeg" [(ngModel)]="veiculoEdit.seguradora"></po-input>
+    <po-input class="po-md-3" p-label="Nº Apólice" name="vApo" [(ngModel)]="veiculoEdit.apolice"></po-input>
+    <po-decimal class="po-md-3" p-label="% de Ganho" [p-decimals-length]="2" name="vPct"
+      [(ngModel)]="veiculoEdit.percentualGanho"></po-decimal>
+  </div>
+  <div class="frtsin-acoes">
+    <po-button p-label="Cancelar" p-kind="secondary" (p-click)="modalVeiculo.close()"></po-button>
+    <po-button p-label="Salvar" p-kind="primary" (p-click)="salvarVeiculo()"></po-button>
+  </div>
+</po-modal>
+
+<!-- ===================== MODAL TESTEMUNHA ===================== -->
+<po-modal #modalTestemunha p-title="Testemunha" p-size="md">
+  <div class="po-row">
+    <po-input class="po-md-8" p-label="Nome" name="tNome" [(ngModel)]="testemunhaEdit.nome"></po-input>
+    <po-input class="po-md-4" p-label="Telefone" name="tTel" [(ngModel)]="testemunhaEdit.telefone"></po-input>
+  </div>
+  <div class="po-row">
+    <po-input class="po-md-6" p-label="Endereço" name="tEnd" [(ngModel)]="testemunhaEdit.endereco"></po-input>
+    <po-input class="po-md-4" p-label="Cidade" name="tCid" [(ngModel)]="testemunhaEdit.cidade"></po-input>
+    <po-input class="po-md-2" p-label="UF" p-mask="AA" name="tUf" [(ngModel)]="testemunhaEdit.uf"></po-input>
+  </div>
+  <div class="po-row">
+    <po-input class="po-md-6" p-label="Documento" name="tDoc" [(ngModel)]="testemunhaEdit.documento"></po-input>
+    <po-input class="po-md-6" p-label="Qualificação" name="tQlf" [(ngModel)]="testemunhaEdit.qualificacao"></po-input>
+  </div>
+  <div class="frtsin-acoes">
+    <po-button p-label="Cancelar" p-kind="secondary" (p-click)="modalTestemunha.close()"></po-button>
+    <po-button p-label="Salvar" p-kind="primary" (p-click)="salvarTestemunha()"></po-button>
+  </div>
+</po-modal>
+
+<!-- ===================== MODAL VITIMA ===================== -->
+<po-modal #modalVitima p-title="Vítima" p-size="md">
+  <div class="po-row">
+    <po-select class="po-md-3" p-label="Funcionário?" [p-options]="simnaoOptions" name="wFunc"
+      [ngModel]="vitimaEdit.funcionario" (ngModelChange)="vitimaEdit.funcionario = $event"></po-select>
+    <po-input class="po-md-3" p-label="Matrícula" name="wMat" [(ngModel)]="vitimaEdit.matricula"></po-input>
+    <po-input class="po-md-6" p-label="Nome" name="wNome" [(ngModel)]="vitimaEdit.nome"></po-input>
+  </div>
+  <div class="po-row">
+    <po-input class="po-md-4" p-label="Telefone" name="wTel" [(ngModel)]="vitimaEdit.telefone"></po-input>
+    <po-input class="po-md-5" p-label="Endereço" name="wEnd" [(ngModel)]="vitimaEdit.endereco"></po-input>
+    <po-input class="po-md-3" p-label="Cidade" name="wCid" [(ngModel)]="vitimaEdit.cidade"></po-input>
+  </div>
+  <div class="po-row">
+    <po-input class="po-md-8" p-label="Função" name="wFun" [(ngModel)]="vitimaEdit.funcao"></po-input>
+    <po-select class="po-md-4" p-label="Vítima Fatal?" [p-options]="simnaoOptions" name="wFatal"
+      [ngModel]="vitimaEdit.fatal" (ngModelChange)="vitimaEdit.fatal = $event"></po-select>
+  </div>
+  <div class="po-row">
+    <po-textarea class="po-md-12" p-label="Descrição das Lesões" [p-rows]="2" name="wLes"
+      [(ngModel)]="vitimaEdit.lesoes"></po-textarea>
+  </div>
+  <div class="po-row">
+    <po-textarea class="po-md-8" p-label="Ação Tomada" [p-rows]="2" name="wAcao"
+      [(ngModel)]="vitimaEdit.acaoTomada"></po-textarea>
+    <po-decimal class="po-md-4" p-label="Valor Gasto c/ Vítima" [p-decimals-length]="2" name="wVal"
+      [(ngModel)]="vitimaEdit.valorVitima"></po-decimal>
+  </div>
+  <div class="frtsin-acoes">
+    <po-button p-label="Cancelar" p-kind="secondary" (p-click)="modalVitima.close()"></po-button>
+    <po-button p-label="Salvar" p-kind="primary" (p-click)="salvarVitima()"></po-button>
+  </div>
+</po-modal>

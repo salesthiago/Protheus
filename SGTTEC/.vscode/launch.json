@@ -1,0 +1,23 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "totvs_language_web_debug",
+            "request": "launch",
+            "name": "TOTVS Language Debug",
+            "program": "${command:AskForProgramName}",
+            "cwb": "${workspaceFolder}",
+            "isMultiSession": true,
+            "enableTableSync": true,
+            "enableMultiThread": true,
+            "smartclienturl": "http://10.10.100.3:1000/webapp",  
+            "extendFeatures": {
+                "charDetails": false
+            }
+        }
+    ]
+}
+

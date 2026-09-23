@@ -1,0 +1,68 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* Este app nao usa po-menu (tela unica, sem navegacao lateral) -- po-theme-default.min.css
+   reserva espaco de menu em duas classes distintas, incondicionalmente (mesmo sem <po-menu>
+   no DOM): o po-toolbar (a barra azul) e o po-page (div interno que po-page/po-page-list
+   sempre renderizam -- <div class="po-page"><ng-content></ng-content></div>, confirmado no
+   template compilado do componente). Corrigir so o toolbar deixava a faixa em branco do
+   po-page por baixo dele. !important porque o seletor original da biblioteca
+   (".po-wrapper .po-page" em alguns casos) tem maior especificidade que um simples ".po-page". */
+.po-toolbar {
+  margin-left: 0;
+  width: 100%;
+}
+
+.po-page {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+/* Compartilhado pelas duas abas (Importar/Exportar) -- ver
+   pages/importar-medicao e pages/exportar-medicao. */
+.rtm002-limpar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.rtm002-info-box {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 1rem 0;
+  padding: 1rem 1.5rem;
+  border-radius: var(--border-radius, 4px);
+  background-color: var(--color-brand-01-lightest, #eaf3fb);
+  border-left: 4px solid var(--color-brand-01-base, #2573b3);
+}
+
+.rtm002-info-icon {
+  color: var(--color-brand-01-base, #2573b3);
+  font-size: 1.5rem;
+}
+
+.rtm002-info-item {
+  min-width: 200px;
+}
+
+.rtm002-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  /* Espaco reservado no final do conteudo para a ultima linha da tabela nao ficar
+     escondida atras do rodape fixo (ver .rtm002-footer). */
+  padding-bottom: 4.5rem;
+}
+
+.rtm002-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background-color: var(--background, #fff);
+  border-top: 1px solid var(--border-color, #e0e0e0);
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}

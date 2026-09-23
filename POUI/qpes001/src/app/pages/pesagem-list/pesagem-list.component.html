@@ -1,0 +1,53 @@
+<po-page-list p-title="Pesagens" [p-actions]="pageActions" [p-filter]="filter">
+  <p class="dica-f10">Selecione uma linha e pressione <strong>F10</strong> para pesar automaticamente (entrada primeiro, depois saída).</p>
+
+  <po-table
+    [p-columns]="columns"
+    [p-items]="items"
+    [p-actions]="tableActions"
+    [p-loading]="loading"
+    [p-height]="500"
+    [p-selectable]="true"
+    [p-single-select]="true"
+    [p-hide-select-all]="true"
+    (p-selected)="linhaSelecionada = $event"
+    (p-unselected)="linhaSelecionada = null">
+  </po-table>
+</po-page-list>
+
+<po-modal #modalFiltro p-title="Filtro Avançado" p-size="md" [p-primary-action]="filtroPrimaryAction" [p-secondary-action]="filtroSecondaryAction">
+  <div class="po-row">
+    <po-select class="po-md-6" name="filtroCC" p-label="Centro de Custo" [p-options]="ccOptions" [ngModel]="filtro.cc" (ngModelChange)="filtro.cc = $event">
+    </po-select>
+
+    <po-select class="po-md-6" name="filtroStatus" p-label="Status" [p-options]="statusOptions" [ngModel]="filtro.status" (ngModelChange)="filtro.status = $event">
+    </po-select>
+  </div>
+
+  <div class="po-row">
+    <po-datepicker class="po-md-6" name="filtroDataDe" p-label="Data (de)" [(ngModel)]="filtroDataDe"></po-datepicker>
+    <po-datepicker class="po-md-6" name="filtroDataAte" p-label="Data (até)" [(ngModel)]="filtroDataAte"></po-datepicker>
+  </div>
+
+  <div class="po-row">
+    <po-input class="po-md-4" name="filtroPlaca" p-label="Placa" [(ngModel)]="filtro.placa"></po-input>
+    <po-input class="po-md-4" name="filtroMotorista" p-label="Motorista" [(ngModel)]="filtro.motorista"></po-input>
+    <po-input class="po-md-4" name="filtroProduto" p-label="Produto" [(ngModel)]="filtro.produto"></po-input>
+  </div>
+</po-modal>
+
+<po-modal
+  #modalBalanca
+  p-title="Selecione a Balança"
+  p-size="sm"
+  [p-hide-close]="true"
+  [p-click-out]="false"
+  [p-primary-action]="balancaPrimaryAction">
+  <p>Há mais de uma balança cadastrada. Escolha qual será usada nesta sessão para capturar o peso.</p>
+  <po-radio-group
+    name="balancaEscolhida"
+    [p-options]="balancaSelecao.balancas"
+    [ngModel]="balancaEscolhida"
+    (ngModelChange)="onBalancaChange($event)">
+  </po-radio-group>
+</po-modal>

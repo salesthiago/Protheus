@@ -1,0 +1,23 @@
+.frtsin-acoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.frtsin-acoes-topo {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0.5rem 0 1rem;
+}
+
+.frtsin-btn-inline {
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 0.25rem;
+}
+
+.frtsin-ajuda {
+  margin: 0.5rem 0 1rem;
+  line-height: 1.5;
+}

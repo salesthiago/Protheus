@@ -1,0 +1,76 @@
+@if (verificandoAcesso) {
+  <po-page-default p-title="Manutenção de Parâmetros">
+    <p>Verificando permissão de acesso...</p>
+  </po-page-default>
+} @else if (!autorizado) {
+  <po-page-default p-title="Acesso não permitido">
+    <div class="acesso-negado">
+      <p>O usuário <strong>{{ usuario }}</strong> não tem permissão para acessar a manutenção de parâmetros.</p>
+      <p>Solicite a um administrador para incluir seu usuário no parâmetro <strong>MV_XMANUT</strong>.</p>
+      <po-button p-label="Fechar" p-kind="secondary" (p-click)="fechar()"></po-button>
+    </div>
+  </po-page-default>
+} @else {
+  <po-page-list p-title="Manutenção de Parâmetros" [p-actions]="pageActions" [p-filter]="filter">
+    <po-table
+      [p-columns]="columns"
+      [p-items]="items"
+      [p-actions]="tableActions"
+      [p-loading]="loading"
+      [p-height]="500">
+    </po-table>
+  </po-page-list>
+}
+
+<po-modal
+  #modalForm
+  p-title="{{ editando ? 'Editar Parâmetro' : 'Novo Parâmetro' }}"
+  p-size="md"
+  [p-primary-action]="modalPrimaryAction"
+  [p-secondary-action]="modalSecondaryAction">
+
+  <div class="po-row">
+    <po-input
+      class="po-md-6"
+      name="variavel"
+      p-label="Nome do Parâmetro"
+      p-help="Deve começar com MV_ e ter até 10 caracteres"
+      p-placeholder="MV_XEXEMPLO"
+      [(ngModel)]="form.variavel"
+      [p-disabled]="editando"
+      [p-required]="true">
+    </po-input>
+
+    <po-select
+      class="po-md-6"
+      name="tipo"
+      p-label="Tipo do Valor"
+      [p-options]="tipos"
+      [ngModel]="form.tipo"
+      (ngModelChange)="onTipoChange($event)"
+      [p-disabled]="editando">
+    </po-select>
+  </div>
+
+  <div class="po-row">
+    <po-input class="po-md-12" name="descricao" p-label="Descrição" p-placeholder="Para que serve este parâmetro" [(ngModel)]="form.descricao" [p-required]="true">
+    </po-input>
+  </div>
+
+  <div class="po-row">
+    @switch (form.tipo) {
+      @case ('N') {
+        <po-number class="po-md-12" name="conteudoNumero" p-label="Valor" [(ngModel)]="conteudoNumero"></po-number>
+      }
+      @case ('D') {
+        <po-datepicker class="po-md-12" name="conteudoData" p-label="Valor" [(ngModel)]="conteudoData"></po-datepicker>
+      }
+      @case ('L') {
+        <po-switch class="po-md-12" name="conteudoLogico" p-label="Valor" p-label-on="Sim" p-label-off="Não" [(ngModel)]="conteudoLogico"></po-switch>
+      }
+      @default {
+        <po-input class="po-md-12" name="conteudoTexto" p-label="Valor" [(ngModel)]="conteudoTexto"></po-input>
+      }
+    }
+  </div>
+</po-modal>

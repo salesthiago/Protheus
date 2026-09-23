@@ -1,0 +1,29 @@
+/* Navegacao simples por routerLink entre Importar/Exportar -- nao usa po-tabs porque o
+   componente projeta o conteudo de cada aba inline (ng-content), e aqui cada aba e uma rota
+   propria com seu proprio componente (router-outlet), mesmo padrao ja usado no app inteiro
+   (ver app.config.ts -- withHashLocation por causa do FWCallApp). */
+.rtm002-tabs {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background-color: var(--background, #fff);
+}
+
+.rtm002-tab {
+  padding: 0.75rem 1rem;
+  font-weight: var(--font-weight-bold, 600);
+  color: var(--color-action-default, #2573b3);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.rtm002-tab:hover {
+  background-color: var(--color-brand-01-lightest, #eaf3fb);
+}
+
+.rtm002-tab-active {
+  color: var(--color-brand-01-base, #2573b3);
+  border-bottom-color: var(--color-brand-01-base, #2573b3);
+}

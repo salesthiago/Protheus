@@ -1,0 +1,436 @@
+<po-page-list>
+  <!-- Cabecalho customizado, fixo (sticky) no topo, titulo+subtitulo JUNTO com as acoes na
+       mesma barra (pedido do usuario 2026-08-11). NAO usa [p-title]/[p-actions] da po-page-list:
+       queria titulo+botoes na MESMA linha, sticky ao rolar, e PoPageAction.subItems so tem efeito
+       com 4+ acoes no array -- po-dropdown e autonomo e nao tem esse limite. -->
+  <div class="rtm003-sticky-header">
+    <div class="rtm003-titulo-bloco">
+      <a class="rtm003-breadcrumb" (click)="voltarLista()">Contratos</a>
+      <h2 class="rtm003-titulo">{{ titulo }}</h2>
+      <p class="rtm003-subtitulo">{{ subtitulo }}</p>
+    </div>
+    <div class="rtm003-header-acoes">
+      <!-- So faz sentido em modo editar -- em modo criar todas as acoes dependem de um contrato
+           ja salvo (ver recalcularAcoesRelacionadas()), entao o dropdown so aparecia cheio de
+           itens desabilitados (pedido do usuario: "na elaboracao do contrato nao faz sentido"). -->
+      <po-dropdown *ngIf="modo === 'editar'" p-label="Ações Relacionadas" [p-actions]="acoesRelacionadasItems"></po-dropdown>
+      <po-button p-label="Cancelar" p-kind="secondary" (p-click)="cancelar()"></po-button>
+      <po-button p-label="Confirmar" p-kind="primary" [p-loading]="salvando" (p-click)="confirmar()"></po-button>
+    </div>
+  </div>
+
+  <po-tabs>
+    <po-tab p-label="Cadastrais" [p-active]="true">
+      <!-- Campos minimos (layout da tela "Elaborar contrato"): Numero, Descricao, Especie, Tipo de
+           contrato, Moeda, Condicao de pagamento, Natureza. Departamento e Gestor ficam de fora
+           por pedido do usuario (2026-09-21). -->
+      <po-container p-title="Dados Principais">
+        <div class="po-row">
+          <div class="po-md-3">
+            <po-input p-label="Número" name="numero" [(ngModel)]="numero" [p-disabled]="modo === 'editar'"></po-input>
+          </div>
+          <div class="po-md-6">
+            <po-input p-label="Descrição" name="descricao" [(ngModel)]="descricao" [p-disabled]="false"></po-input>
+          </div>
+          <div class="po-md-3">
+            <po-input p-label="Espécie" name="especie" [ngModel]="especieLabel" [p-disabled]="true"></po-input>
+          </div>
+        </div>
+
+        <div class="po-row">
+          <!-- po-combo (nao po-lookup): mostra lista de sugestoes ao digitar, pedido do usuario
+               2026-09-22 -- ver criarComboFilter() no .ts. p-emit-object-value devolve o item
+               inteiro no (p-change), igual o (p-selected) do po-lookup antigo. -->
+          <po-combo
+            class="po-md-3"
+            name="tipoContrato"
+            p-label="Tipo de contrato"
+            [p-filter-service]="tipoContratoComboFilter"
+            [p-emit-object-value]="true"
+            [ngModel]="tipoContratoCodigo"
+            (ngModelChange)="tipoContratoCodigo = $event"
+            [p-required]="true"
+            (p-change)="onTipoContratoSelecionado($event)">
+          </po-combo>
+          <div class="po-md-2">
+            <po-select
+              p-label="Moeda"
+              name="moeda"
+              [p-options]="moedaOptions"
+              [ngModel]="moeda"
+              (ngModelChange)="moeda = $event">
+            </po-select>
+          </div>
+          <po-combo
+            class="po-md-3"
+            name="condPagto"
+            p-label="Condição de pagamento"
+            [p-filter-service]="condPagtoComboFilter"
+            [p-emit-object-value]="true"
+            [ngModel]="condPagtoCodigo"
+            (ngModelChange)="condPagtoCodigo = $event"
+            (p-change)="onCondPagtoSelecionado($event)">
+          </po-combo>
+          <po-combo
+            class="po-md-4"
+            name="natureza"
+            p-label="Natureza"
+            [p-filter-service]="naturezaComboFilter"
+            [p-emit-object-value]="true"
+            [ngModel]="naturezaCodigo"
+            (ngModelChange)="naturezaCodigo = $event"
+            (p-change)="onNaturezaSelecionada($event)">
+          </po-combo>
+        </div>
+      </po-container>
+
+      <po-container p-title="Prazo e vigência">
+        <div class="po-row">
+          <div class="po-md-3">
+            <po-datepicker p-label="Data de início" name="dataInicio" [(ngModel)]="dataInicio"></po-datepicker>
+          </div>
+          <div class="po-md-3">
+            <po-number p-label="Vigência" name="vigencia" [(ngModel)]="vigencia"></po-number>
+          </div>
+          <div class="po-md-3">
+            <po-select
+              p-label="Unidade"
+              [p-options]="unidadesVigenciaOptions"
+              name="unidadeVigencia"
+              [ngModel]="unidadeVigencia"
+              (ngModelChange)="unidadeVigencia = $event">
+            </po-select>
+          </div>
+          <div class="po-md-3">
+            <po-datepicker p-label="Data final" name="dataFinal" [ngModel]="dataFinalCalculada" [p-disabled]="true"></po-datepicker>
+          </div>
+        </div>
+      </po-container>
+
+      <po-container p-title="Informações Adicionais">
+        <div class="po-row">
+          <div class="po-md-3">
+            <po-datepicker p-label="Dt. Assinatura" name="dtAssinatura" [(ngModel)]="dtAssinatura"></po-datepicker>
+          </div>
+        </div>
+        <div class="po-row">
+          <div class="po-md-4">
+            <po-textarea p-label="Objeto do Contrato" name="objeto" [(ngModel)]="objeto" [p-rows]="3"></po-textarea>
+          </div>
+          <div class="po-md-4">
+            <po-textarea p-label="Cláusula" name="clausula" [(ngModel)]="clausula" [p-rows]="3"></po-textarea>
+          </div>
+          <!-- Justificativa nao faz sentido na criacao de um contrato novo (pedido do usuario
+               2026-09-22) -- so aparece em modo editar, mesmo raciocinio ja aplicado na Nova
+               Revisao (so Reajuste). -->
+          <div class="po-md-4" *ngIf="modo === 'editar'">
+            <po-textarea p-label="Justificativa" name="justificativa" [(ngModel)]="justificativa" [p-rows]="3"></po-textarea>
+          </div>
+        </div>
+      </po-container>
+
+      <po-container p-title="Situação do Contrato" *ngIf="modo === 'editar'">
+        <div class="rtm003-situacao-atual">
+          <span class="rtm003-situacao-rotulo">Situação atual</span>
+          <span class="rtm003-situacao-badge">{{ situacaoLabel }}</span>
+        </div>
+        <p class="rtm003-planilhas-hint">
+          As transições abaixo são controladas por esta tela (não pelas travas da rotina padrão do
+          CNTA300). Cada mudança é registrada na linha do tempo do contrato.
+        </p>
+        <div class="po-row">
+          <div class="po-md-8">
+            <po-textarea
+              p-label="Observação (opcional, gravada junto com a mudança)"
+              name="obsSituacao"
+              [(ngModel)]="obsSituacao"
+              [p-rows]="2">
+            </po-textarea>
+          </div>
+        </div>
+        <div class="rtm003-situacao-acoes">
+          <ng-container *ngIf="transicoesDisponiveis.length > 0; else semTransicao">
+            <po-button
+              *ngFor="let alvo of transicoesDisponiveis"
+              [p-label]="'Mudar para ' + alvo.label"
+              p-kind="secondary"
+              [p-loading]="carregando"
+              (p-click)="confirmarMudancaSituacao(alvo)">
+            </po-button>
+          </ng-container>
+          <ng-template #semTransicao>
+            <span class="rtm003-planilhas-hint">Nenhuma transição de situação disponível a partir de "{{ situacaoLabel }}".</span>
+          </ng-template>
+        </div>
+      </po-container>
+
+      <!-- Planilhas: uma aba por planilha (como na tela nativa), campos da planilha + grade de itens.
+           A faixa de abas e feita a mao (nao po-tabs) para poder ter o botao "+ Adicionar Planilha"
+           ao lado e criar/remover abas dinamicamente sem depender de po-tab dentro de ngFor. -->
+      <po-container p-title="Planilhas">
+        <div class="rtm003-pla-abas">
+          <button
+            *ngFor="let pla of planilhas; let i = index"
+            type="button"
+            class="rtm003-pla-aba"
+            [class.rtm003-pla-aba-ativa]="i === planilhaSelecionadaIndex"
+            (click)="selecionarPlanilha(i)">
+            {{ tituloPlanilha(pla, i) }}
+          </button>
+          <button *ngIf="modo === 'criar'" type="button" class="rtm003-pla-aba rtm003-pla-aba-add" (click)="adicionarPlanilha()">
+            + Adicionar Planilha
+          </button>
+        </div>
+
+        <p *ngIf="planilhas.length === 0" class="rtm003-planilhas-hint">Nenhuma planilha. Use "+ Adicionar Planilha".</p>
+        <p *ngIf="modo === 'editar'" class="rtm003-planilhas-hint">
+          Para alterar as planilhas deste contrato, abra uma Nova Revisão (menu "Ações Relacionadas").
+        </p>
+
+        <ng-container *ngFor="let pla of planilhas; let i = index">
+          <div *ngIf="i === planilhaSelecionadaIndex" class="rtm003-pla-corpo">
+            <div class="po-row">
+              <po-combo
+                class="po-md-3"
+                [name]="'tipoPlanilha' + i"
+                p-label="Tipo de planilha"
+                [p-filter-service]="tipoPlanilhaComboFilter"
+                [p-emit-object-value]="true"
+                [ngModel]="pla.tipoPlanilha"
+                (ngModelChange)="pla.tipoPlanilha = $event"
+                [p-required]="true"
+                [p-disabled]="modo === 'editar'"
+                (p-change)="onTipoPlanilhaSelecionado(pla, $event)">
+              </po-combo>
+              <div class="po-md-4">
+                <po-input
+                  p-label="Descrição"
+                  [name]="'descPla' + i"
+                  [(ngModel)]="pla.descricao"
+                  [p-disabled]="modo === 'editar'">
+                </po-input>
+              </div>
+              <po-lookup
+                class="po-md-3"
+                [name]="'pessoa' + i"
+                p-label="Cliente / Fornecedor"
+                p-field-value="codigo"
+                p-field-label="nome"
+                [p-columns]="pessoaColumns"
+                [p-filter-service]="pessoaFilter"
+                [(ngModel)]="pla.pessoaCodigo"
+                [p-required]="true"
+                [p-disabled]="modo === 'editar'"
+                (p-selected)="onPessoaSelecionada(pla, $event)">
+              </po-lookup>
+              <div class="po-md-2">
+                <po-decimal
+                  p-label="Valor total"
+                  [name]="'valorPla' + i"
+                  [p-decimals-length]="casasDecimais"
+                  [ngModel]="valorTotalPlanilha(pla)"
+                  [p-disabled]="true">
+                </po-decimal>
+              </div>
+            </div>
+
+            <div class="po-row">
+              <div class="po-md-3">
+                <po-select
+                  p-label="Índice de reajuste"
+                  [name]="'indice' + i"
+                  [p-options]="indiceOptions"
+                  [ngModel]="pla.indice"
+                  (ngModelChange)="pla.indice = $event"
+                  [p-disabled]="modo === 'editar'">
+                </po-select>
+              </div>
+              <div class="po-md-2">
+                <po-number
+                  p-label="Periodicidade"
+                  [name]="'period' + i"
+                  [(ngModel)]="pla.periodicidade"
+                  [p-disabled]="modo === 'editar' || !pla.exigeCronograma">
+                </po-number>
+              </div>
+              <div class="po-md-2">
+                <po-select
+                  p-label="Unidade"
+                  [name]="'unidPla' + i"
+                  [p-options]="unidadePeriodicidadeOptions"
+                  [ngModel]="pla.unidadePer"
+                  (ngModelChange)="pla.unidadePer = $event"
+                  [p-disabled]="modo === 'editar'">
+                </po-select>
+              </div>
+              <div class="po-md-3">
+                <po-select
+                  p-label="Modo de reajuste"
+                  [name]="'modoRej' + i"
+                  [p-options]="modoReajusteOptions"
+                  [ngModel]="pla.modoReajuste"
+                  (ngModelChange)="pla.modoReajuste = $event"
+                  [p-disabled]="modo === 'editar' || modoReajusteOptions.length === 0">
+                </po-select>
+              </div>
+              <div class="po-md-2">
+                <po-datepicker
+                  p-label="Data base"
+                  [name]="'dtBase' + i"
+                  [(ngModel)]="pla.dataBase"
+                  [p-disabled]="modo === 'editar'">
+                </po-datepicker>
+              </div>
+            </div>
+
+            <div class="rtm003-pla-acoes">
+              <po-button
+                *ngIf="modo === 'criar'"
+                p-label="Remover planilha"
+                p-kind="tertiary"
+               
+                (p-click)="removerPlanilha(i)">
+              </po-button>
+              <po-button
+                p-label="Editar Parcela"
+                p-kind="secondary"
+                [p-disabled]="modo === 'criar' || !temCronograma"
+                (p-click)="abrirCronograma()">
+              </po-button>
+            </div>
+
+            <app-item-grid
+              [itens]="pla.itens"
+              [somenteLeitura]="modo === 'editar'"
+              (itensChange)="onItensAlterados(i, $event)">
+            </app-item-grid>
+          </div>
+        </ng-container>
+
+        <p *ngIf="camposIndisponiveis" class="rtm003-planilhas-hint">
+          Campos não localizados no dicionário deste ambiente (podem ser preenchidos, mas não serão gravados): {{ camposIndisponiveis }}. Mapeamento atual: {{ mapaCampos }}.
+        </p>
+        <p *ngIf="erroIndice" class="rtm003-planilhas-hint">{{ erroIndice }}</p>
+
+        <div class="rtm003-total-geral">Total geral do contrato: {{ textoTotalGeral }}</div>
+      </po-container>
+    </po-tab>
+
+    <po-tab p-label="Histórico">
+      <po-table [p-columns]="colunasRevisoes" [p-items]="revisoesGrid" [p-striped]="true"></po-table>
+      <p *ngIf="revisoesGrid.length === 0">Nenhuma revisão registrada.</p>
+    </po-tab>
+
+    <po-tab p-label="Linha do Tempo" *ngIf="modo === 'editar'">
+      <p class="rtm003-planilhas-hint">
+        Todos os eventos do contrato (tabela ZLG) em ordem cronológica — a mesma fonte do relatório
+        "Histórico Contrato" (RT69M003).
+      </p>
+      <po-table
+        [p-columns]="colunasTimeline"
+        [p-items]="timelineGrid"
+        [p-striped]="true"
+        [p-loading]="carregandoTimeline">
+      </po-table>
+      <p *ngIf="!carregandoTimeline && timelineGrid.length === 0">Nenhum evento registrado na linha do tempo.</p>
+    </po-tab>
+  </po-tabs>
+
+  <po-modal #modalCronograma [p-title]="tituloCronograma" p-size="lg">
+    <div class="po-row">
+      <div class="po-md-4">
+        <po-decimal
+          p-label="Total da planilha"
+          name="crgTotalPlanilha"
+          [p-decimals-length]="casasDecimais"
+          [ngModel]="totalPlanilhaCronograma"
+          [p-disabled]="true">
+        </po-decimal>
+      </div>
+      <div class="po-md-4">
+        <po-decimal
+          p-label="Saldo a distribuir"
+          name="crgSaldoDistribuir"
+          [p-decimals-length]="casasDecimais"
+          [ngModel]="saldoADistribuirCronograma"
+          [p-disabled]="true">
+        </po-decimal>
+      </div>
+      <div class="po-md-4 rtm003-modal-distribuir">
+        <po-button p-label="Distribuir" p-kind="secondary" (p-click)="distribuirCronograma()"></po-button>
+      </div>
+    </div>
+    <div class="po-row">
+      <div class="po-md-4">
+        <po-number p-label="Quantidade de Parcelas" name="crgQtdParcelas" [(ngModel)]="crgQtdParcelas"></po-number>
+      </div>
+      <div class="po-md-4">
+        <po-select
+          p-label="Periodicidade"
+          [p-options]="periodicidadeOptions"
+          name="crgPeriodicidade"
+          [ngModel]="crgPeriodicidade"
+          (ngModelChange)="crgPeriodicidade = $event">
+        </po-select>
+      </div>
+      <div class="po-md-4">
+        <po-datepicker p-label="Data 1ª Competência" name="crgDataPrevista" [(ngModel)]="crgDataPrevista"></po-datepicker>
+      </div>
+    </div>
+    <div class="po-row">
+      <div class="po-md-4">
+        <po-number p-label="Dia(s)" name="crgDias" [(ngModel)]="crgDias"></po-number>
+      </div>
+      <div class="po-md-4">
+        <po-select
+          p-label="Último dia do mês?"
+          [p-options]="simNaoOptions"
+          name="crgUltimoDiaMes"
+          [ngModel]="crgUltimoDiaMes"
+          (ngModelChange)="crgUltimoDiaMes = $event">
+        </po-select>
+      </div>
+      <div class="po-md-4">
+        <po-input p-label="Competência de Início (MM/AAAA)" name="crgCompetenciaInicio" [(ngModel)]="crgCompetenciaInicio"></po-input>
+      </div>
+    </div>
+    <div class="po-row">
+      <po-combo
+        class="po-md-6"
+        name="crgCondPagto"
+        p-label="Condição de Pagamento"
+        [p-filter-service]="condPagtoComboFilter"
+        [ngModel]="crgCondPagtoCodigo"
+        (ngModelChange)="crgCondPagtoCodigo = $event">
+      </po-combo>
+      <div class="po-md-6">
+        <po-number p-label="Taxa de Juros" name="crgTaxaJuros" [(ngModel)]="crgTaxaJuros"></po-number>
+      </div>
+    </div>
+
+    <div class="rtm003-modal-acoes">
+      <po-button p-label="Remover todos" p-kind="tertiary" (p-click)="removerTodasParcelas()"></po-button>
+      <po-button p-label="Adicionar" p-kind="secondary" (p-click)="adicionarParcelaManual()"></po-button>
+    </div>
+    <po-table [p-columns]="colunasCronograma" [p-items]="crgParcelas" [p-striped]="true"></po-table>
+    <p *ngIf="crgParcelas.length === 0" class="rtm003-planilhas-hint">Saldo ainda não distribuído.</p>
+    <p class="rtm003-planilhas-hint">
+      A tabela acima é uma prévia de como o total da planilha tende a ficar dividido -- o cronograma
+      definitivo é gerado pela rotina nativa (mesma do botão "Incluir Cronograma Financeiro/Físico" do
+      CNTA300) a partir dos parâmetros informados, ao clicar em "Confirmar".
+    </p>
+
+    <div class="rtm003-modal-acoes">
+      <po-button p-label="Confirmar" p-kind="primary" [p-loading]="gerandoCronograma" (p-click)="salvarCronograma()"></po-button>
+    </div>
+  </po-modal>
+
+  <po-modal #modalCronogramaPendente p-title="Cronograma Financeiro Pendente" p-size="sm">
+    <p>O contrato foi salvo, mas ainda não tem um cronograma financeiro/físico. O que deseja fazer?</p>
+    <div class="rtm003-modal-acoes">
+      <po-button p-label="Voltar e Revisar Contrato" p-kind="secondary" (p-click)="cronogramaPendenteVoltarElaboracao()"></po-button>
+      <po-button p-label="Salvar sem Cronograma" p-kind="secondary" (p-click)="cronogramaPendenteSalvarSemCronograma()"></po-button>
+      <po-button p-label="Criar Cronograma Agora" p-kind="primary" (p-click)="cronogramaPendenteCriarAgora()"></po-button>
+    </div>
+  </po-modal>
+</po-page-list>
