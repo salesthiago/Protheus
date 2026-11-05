@@ -1,4 +1,4 @@
 {
-    "totvsLanguageServer.welcomePage": false,
-    "totvsLanguageServer.editor.linter.includes": "D:\\Protheus\\TOTVS\\includes"
+    "totvsLanguageServer.editor.linter.includes": "/home/thiago/Documentos/includes",
+    "totvsLanguageServer.welcomePage": false
 }

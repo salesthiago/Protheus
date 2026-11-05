@@ -10,11 +10,6 @@ WSRESTFUL APIAterro DESCRIPTION "API GRAVAR PESAGENS ATERRO" FORMAT "application
 										PATH '/APIAterro/recMovNJH' ;
 										PRODUCES APPLICATION_JSON
 
-	WSMETHOD POST updMovNJH 			DESCRIPTION 'Atualiza Movimento NJH ja sincronizado'	;
-										WSSYNTAX '/APIAterro/updMovNJH' ;
-										PATH '/APIAterro/updMovNJH' ;
-										PRODUCES APPLICATION_JSON
-
 	//WSMETHOD POST recDA3Cad 			DESCRIPTION 'Cadastro de Veículos'	;
 	//									WSSYNTAX '/APIAterro/recCadDA3';
 	//									PATH '/APIAterro/recCadDA3';
@@ -40,9 +35,10 @@ WSMETHOD POST recMovNJH WSRECEIVE WSSERVICE APIAterro
         cFilRef := "0101"
     endif
 
-    RpcClearEnv()
-    RpcSetType(3)
-    RpcSetEnv(cEmpAnt, cFilref,,,,GetEnvServer(),aTables)
+	cFilAnt := cFilref
+    //RpcClearEnv()
+    //RpcSetType(3)
+    //RpcSetEnv(cEmpAnt, cFilref,,,,GetEnvServer(),aTables)
 
 	::SetContentType('application/json')
 	
@@ -98,79 +94,6 @@ WSMETHOD POST recMovNJH WSRECEIVE WSSERVICE APIAterro
 		SetRestFault(400, EncodeUTF8("Ticket já Gravado"))
 	endif
     
-	RpcClearEnv()
-
-Return lRet
-//Atualizacao de registro NJH ja sincronizado (usado quando o
-//registro muda apos o primeiro envio, ou quando o usuario edita e re-solicita sync)
-WSMETHOD POST updMovNJH WSRECEIVE WSSERVICE APIAterro
-	Local lRet 		:= .T.
-	Local cJson		:= ::getContent()
-	Local oResponse, oJson
-    Local aTables   := {"NJH", "SB1", "NJ0", "DA3" } 
-
-    if cEmpAnt = "02"
-        cFilref := "0201"
-    else
-        cFilRef := "0101"
-    endif
-
-    RpcClearEnv()
-    RpcSetType(3)
-    RpcSetEnv(cEmpAnt, cFilref,,,,GetEnvServer(),aTables)
-
-	::SetContentType('application/json')
-	
-	oResponse	:= JsonObject():New()
-	oJson		:= JsonObject():New()
-	
-	oJson:FromJson(cJson)
-	
-	conout("Atualizando Movimento dos Projetos APIAterro - updMovNJH --> "+oJson['NJH_XCLVL'])
-
-	NJH->(DbSetOrder(3))
-	if NJH->(DbSeek(xfilial("NJH")+oJson['NJH_XCLVL']+oJson['NJH_CODPAV']))
-
-		NJH->(RecLock("NJH",.F.))
-		NJH->NJH_CODPAV	:= oJson['NJH_CODPAV']
-		NJH->NJH_DATA  	:= stod(oJson['NJH_DATA'])
-		NJH->NJH_CODENT := oJson['NJH_CODENT']
-		NJH->NJH_LOJENT := oJson['NJH_LOJENT']
-		NJH->NJH_NOMENT	:= oJson['NJH_NOMENT']
-		NJH->NJH_NLJENT	:= oJson['NJH_NLJENT']
-		NJH->NJH_CODPRO	:= oJson['NJH_CODPRO']
-		NJH->NJH_DESPRO	:= oJson['NJH_DESPRO']
-		NJH->NJH_UM1PRO	:= oJson['NJH_UM1PRO']
-		NJH->NJH_PLACA 	:= oJson['NJH_PLACA']
-		NJH->NJH_NOMMOT	:= oJson['NJH_NOMMOT']
-		NJH->NJH_DATPS1	:= stod(oJson['NJH_DATPS1'])
-		NJH->NJH_HORPS1	:= oJson['NJH_HORPS1']
-		NJH->NJH_PESO1 	:= oJson['NJH_PESO1']
-		NJH->NJH_MODPS1	:= oJson['NJH_MODPS1']
-		NJH->NJH_DATPS2	:= stod(oJson['NJH_DATPS2'])
-		NJH->NJH_HORPS2	:= oJson['NJH_HORPS2']
-		NJH->NJH_PESO2 	:= oJson['NJH_PESO2']
-		NJH->NJH_MODPS2	:= oJson['NJH_MODPS2']
-		NJH->NJH_PSSUBT	:= oJson['NJH_PSSUBT']
-		NJH->NJH_OBS   	:= oJson['NJH_OBS']
-		NJH->NJH_STATUS	:= oJson['NJH_STATUS']
-		NJH->NJH_XROTA 	:= oJson['NJH_XROTA']
-		NJH->NJH_XCLIEN	:= oJson['NJH_XCLIEN']
-		NJH->NJH_XDTSIN	:= dDatabase
-		NJH->NJH_XSINC  := "S"
-		NJH->(msUnlock())
-
-		oResponse['status'] 		:= 200
-		oResponse['message']		:= EncodeUTF8("Ticket Atualizado com Sucesso")
-
-		::SetResponse(oResponse:toJson())
-		lRet := .T.
-
-	else
-		lRet := .F.
-		SetRestFault(404, EncodeUTF8("Ticket nao encontrado para atualizacao"))
-	endif
-    
-	RpcClearEnv()
+	//RpcClearEnv()
 
 Return lRet

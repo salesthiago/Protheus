@@ -33,13 +33,42 @@ Static Function JsToAdvpl(oWebChannel, cType, cContent)
     Local oReq       := JsonObject():New()
     Local oResp      := JsonObject():New()
     Local cReceiveId := ""
+    Local cFilBkp    := cFilAnt
+    Local cNumAc     := ""
 
     oReq:fromJson(cContent)
     cReceiveId := oReq["receiveId"]
 
+    // Filial do contrato aberto na tela (o Angular manda "filialContrato" em toda chamada feita
+    // de dentro do contrato -- a listagem mostra contratos de TODAS as filiais, e sem isso
+    // ZcnMont/ZcnAtu/... procuravam o CN9 so na filial da sessao: "Contrato [x] revisao []
+    // nao encontrado", 2026-10-07). Restaurada no fim desta funcao. Inclusao e listagem nao
+    // trocam (usam a filial da sessao / o proprio filtro).
+    If ValType(oReq["filialContrato"]) == "C" .And. !Empty(AllTrim(oReq["filialContrato"])) .And.;
+       !(cType $ "contratoCriar/contratoListar/lookupProximoNumero")
+        cFilAnt := Padr(AllTrim(oReq["filialContrato"]), Len(cFilAnt))
+    EndIf
+
+    // Acesso ao contrato (CNN) -- abrir, alterar, mudar situacao, revisar, excluir ou gerar
+    // cronograma so com o usuario cadastrado na CNN do contrato (pedido do usuario 2026-10-07:
+    // avisar "sem acesso" ANTES de carregar a tela, em vez de "nao encontrado").
+    If ValType(oReq["numero"]) == "C" ; cNumAc := AllTrim(oReq["numero"]) ; EndIf
+    If cType $ "acessoVerificar/contratoDetalhe/contratoAtualizar/contratoSituacao/contratoExcluir/revisaoAbrir/revisaoAprovar/gerarCronograma/cronogramaExcluir" .And.;
+       !Empty(cNumAc) .And. !ZcnAcTem(cNumAc)
+        oResp["success"]   := .F.
+        oResp["semAcesso"] := .T.
+        oResp["usuario"]   := AllTrim(UsrRetName(__cUserId))
+        oResp["message"]   := "O usuario " + AllTrim(UsrRetName(__cUserId)) + " nao possui acesso para alterar o contrato " + cNumAc + "."
+        cType := "#semAcesso"
+    EndIf
+
     Do Case
+    Case cType == "#semAcesso"
+        // resposta ja montada acima
+    Case cType == "acessoVerificar"
+        oResp := ZcnAcVer(cNumAc)
     Case cType == "contratoListar"
-        oResp := ZcnList(oReq)
+        oResp := ZcnListSeg(oReq)
     Case cType == "contratoDetalhe"
         oResp := ZcnDet(oReq)
     Case cType == "contratoCriar"
@@ -48,6 +77,8 @@ Static Function JsToAdvpl(oWebChannel, cType, cContent)
         oResp := ZcnAtu(oReq)
     Case cType == "contratoSituacao"
         oResp := ZcnSit(oReq)
+    Case cType == "contratoExcluir"
+        oResp := ZcnExcluir(oReq)
     Case cType == "contratoTimeline"
         oResp := ZcnTL(oReq)
     Case cType == "revisaoAbrir"
@@ -82,10 +113,32 @@ Static Function JsToAdvpl(oWebChannel, cType, cContent)
         oResp := ZcnProxNum(oReq)
     Case cType == "gerarCronograma"
         oResp := ZcnGrCrg(oReq)
+    Case cType == "cronogramaExcluir"
+        oResp := ZcnCrgExc(oReq)
+    Case cType == "anexoListar"
+        oResp := ZcnAnLst(oReq)
+    Case cType == "anexoCriar"
+        oResp := ZcnAnCri(oReq)
+    Case cType == "anexoBaixar"
+        oResp := ZcnAnBax(oReq)
+    Case cType == "anexoRemover"
+        oResp := ZcnAnRem(oReq)
+    Case cType == "importarExportar"
+        oResp := ZcnImpExp(oReq)
+    Case cType == "acessoListar"
+        oResp := ZcnAcLst(oReq)
+    Case cType == "acessoAdicionar"
+        oResp := ZcnAcAdd(oReq)
+    Case cType == "acessoRemover"
+        oResp := ZcnAcRem(oReq)
+    Case cType == "lookupUsuario"
+        oResp := ZcnUsr(oReq)
     OtherWise
         oResp["success"] := .F.
         oResp["message"] := "Operacao nao reconhecida: " + cType
     EndCase
+
+    cFilAnt := cFilBkp
 
     If !Empty(cReceiveId)
         oWebChannel:AdvplToJs(cReceiveId, oResp:toJson())
@@ -95,8 +148,7 @@ Return .T.
 
 /*/{Protheus.doc} ZcnList
 Lista contratos (operacao "contratoListar") -- so a revisao corrente de cada
-contrato (CN9_REVISA = CN9_REVATU, mesmo campo usado em rtm002/GeraArq para
-identificar a revisao vigente). Nome do cliente/fornecedor resolvido por
+contrato (CN9_REVATU em branco -- ver comentario do BeginSql). Nome do cliente/fornecedor resolvido por
 CNC->(dbSeek()) + ZcnNome -- NAO por JOIN SQL direto: a 1a versao desta
 funcao tentava um JOIN usando campos "CNC_CONTRA"/"CNC_REVISA" inventados por
 analogia com CNA_CONTRA (que existe de fato, confirmado no GCT0109), mas o
@@ -118,9 +170,18 @@ Filtro de filial: quando nao informado, mantem o comportamento anterior (so a fi
 da sessao) -- quando informado, permite consultar OUTRA filial sem precisar re-logar (1a parte
 do pedido de listagem multi-filial; a parte de listar AUTOMATICAMENTE todas as filiais
 permitidas ao usuario, sem filtro explicito, ainda depende de decisao de negocio/pendente).
+"saldo" (CN9_SALDO, mesmo campo fisico ja lido em ZcnMont/oHeader) e "diasEncerramento" (pedido
+do usuario 2026-09-23, "quantidade de dias para encerramento") foram acrescentados nesta fase --
+diasEncerramento e CALCULADO (nao existe campo fisico de data-fim no cabecalho do contrato, so
+CN9_DTINIC + CN9_VIGE/CN9_UNVIGE), somando a vigencia a data de inicio (dias/meses/anos conforme
+CN9_UNVIGE) e subtraindo a data de hoje; pode dar negativo se o contrato ja passou da vigencia.
+Filtro por usuario: respeita o ponto de entrada CN100FIL (o mesmo do browse do CNTA100) --
+executado uma vez por chamada; a expressao devolvida (ex. "CN9_ESPCTR='2'") e avaliada em cada
+registro com o CN9 posicionado pelo R_E_C_N_O_ (a query renomeia os campos, entao nao da pra
+avaliar direto no cAliasQ). Retorno vazio (ou PE nao compilado) = sem restricao.
 @type Static Function
 @param oReq JsonObject, {tipo, situacao, numero, filial, dataInicioDe, dataInicioAte} (todos opcionais)
-@return JsonObject, {success, contratos:[{numero,revisao,tipo,filial,pessoaNome,situacao,situacaoDescricao,vigencia,unidadeVigencia}]}
+@return JsonObject, {success, contratos:[{numero,revisao,tipo,filial,pessoaNome,situacao,situacaoDescricao,vigencia,unidadeVigencia,saldo,diasEncerramento}]}
 /*/
 //=============================================================================================================================
 Static Function ZcnList(oReq)
@@ -139,8 +200,12 @@ Static Function ZcnList(oReq)
     Local cFiltNum   := ""
     Local cLikeNum   := ""
     Local cFiltFil   := ""
+    Local cTodasFil  := ""
     Local dFiltDtDe  := CToD("")
     Local dFiltDtAte := CToD("")
+    Local dDataFimVig := CToD("")
+    Local cFiltPE    := ""
+    Local bFiltPE    := Nil
 
     If ValType(oReq["tipo"]) == "C" ; cFiltTipo := AllTrim(oReq["tipo"]) ; EndIf
     If ValType(oReq["situacao"]) == "C" ; cFiltSit := AllTrim(oReq["situacao"]) ; EndIf
@@ -149,26 +214,65 @@ Static Function ZcnList(oReq)
     If ValType(oReq["dataInicioDe"])  == "C" .And. !Empty(AllTrim(oReq["dataInicioDe"]))  ; dFiltDtDe  := ZcnSToD(oReq["dataInicioDe"])  ; EndIf
     If ValType(oReq["dataInicioAte"]) == "C" .And. !Empty(AllTrim(oReq["dataInicioAte"])) ; dFiltDtAte := ZcnSToD(oReq["dataInicioAte"]) ; EndIf
 
+    // Busca por numero sem diferenciar maiuscula/minuscula (pedido do usuario 2026-09-29) --
+    // compara UPPER(CN9_NUMERO) com o termo ja em maiusculo. Aspas simples duplicadas porque o
+    // termo entra cru no SQL (%exp% com "%...%" nao escapa nada).
+    cFiltNum := StrTran(Upper(cFiltNum), "'", "''")
     cLikeNum := "%'%" + cFiltNum + "%'%"
-    If Empty(cFiltFil)   ; cFiltFil   := xFilial("CN9")     ; EndIf
+    // Sem filial informada = TODAS as filiais (pedido do usuario 2026-09-29; antes caia na filial
+    // da sessao). Mesmo idioma de %exp% cru do cLikeNum: a clausula fica sempre presente, so
+    // troca a condicao.
+    // Os dois valores vao como literal normal (%exp% sem o truque "%...%" de SQL cru) -- a 1a
+    // versao montava a condicao inteira como SQL cru e a tela ficava carregando para sempre ao
+    // filtrar uma filial (2026-09-30).
+    cTodasFil := IIf(Empty(cFiltFil), "S", "N")
+    If Empty(cFiltFil) ; cFiltFil := " " ; EndIf
     If Empty(dFiltDtDe)  ; dFiltDtDe  := SToD("19000101") ; EndIf
     If Empty(dFiltDtAte) ; dFiltDtAte := SToD("20991231") ; EndIf
 
+    // Filtro de visibilidade por usuario (PE CN100FIL -- MV_XGCTUSC/MV_XGCTUSV)
+    If ExistBlock("CN100FIL")
+        cFiltPE := ExecBlock("CN100FIL", .F., .F.)
+        If ValType(cFiltPE) == "C" .And. !Empty(AllTrim(cFiltPE))
+            bFiltPE := &("{|| " + AllTrim(cFiltPE) + " }")
+        EndIf
+    EndIf
+
+    // Revisao vigente = linha com CN9_REVATU EM BRANCO (confirmado no banco 2026-10-20, PSJ-009-JAT:
+    // ''->001, 001->002, 002->003, 003 vigente com REVATU vazio -- o REVATU de cada revisao antiga
+    // aponta para a SEGUINTE). A regra anterior (REVISA = REVATU) so pegava contratos nunca
+    // revisados e escondia todos os revisados. Com uma revisao em aberto (ainda sem aprovacao) ha
+    // duas linhas com REVATU vazio: o NOT EXISTS fica com a menor, que e a vigente.
     BeginSql Alias cAliasQ
         SELECT CN9.CN9_NUMERO AS NUMERO, CN9.CN9_REVISA AS REVISA, CN9.CN9_ESPCTR AS ESPCTR,
-               CN9.CN9_FILIAL AS FILIAL, CN9.CN9_SITUAC AS SITUAC, CN9.CN9_UNVIGE AS UNVIGE, CN9.CN9_VIGE AS VIGE
+               CN9.CN9_FILIAL AS FILIAL, CN9.CN9_SITUAC AS SITUAC, CN9.CN9_UNVIGE AS UNVIGE, CN9.CN9_VIGE AS VIGE,
+               CN9.CN9_DTINIC AS DTINIC, CN9.CN9_SALDO AS SALDO, CN9.R_E_C_N_O_ AS RECCN9
           FROM %table:CN9% CN9
          WHERE CN9.%notDel%
-           AND CN9.CN9_FILIAL = %exp:cFiltFil%
-           AND CN9.CN9_REVISA = CN9.CN9_REVATU
-           AND CN9.CN9_NUMERO LIKE %exp:cLikeNum%
+           AND (CN9.CN9_FILIAL = %exp:cFiltFil% OR %exp:cTodasFil% = 'S')
+           AND CN9.CN9_REVATU = ' '
+           AND NOT EXISTS (SELECT 1 FROM %table:CN9% CNX
+                            WHERE CNX.%notDel%
+                              AND CNX.CN9_FILIAL = CN9.CN9_FILIAL
+                              AND CNX.CN9_NUMERO = CN9.CN9_NUMERO
+                              AND CNX.CN9_REVATU = ' '
+                              AND CNX.CN9_REVISA < CN9.CN9_REVISA)
+           AND UPPER(CN9.CN9_NUMERO) LIKE %exp:cLikeNum%
            AND CN9.CN9_DTINIC BETWEEN %exp:dFiltDtDe% AND %exp:dFiltDtAte%
-         ORDER BY CN9.CN9_NUMERO
+         ORDER BY CN9.CN9_NUMERO, CN9.CN9_FILIAL
     EndSql
 
     CNC->(dbSetOrder(1))
 
     While (cAliasQ)->(!Eof())
+        If bFiltPE != Nil
+            CN9->(DbGoTo((cAliasQ)->RECCN9))
+            If !CN9->(Eval(bFiltPE))
+                (cAliasQ)->(DbSkip())
+                Loop
+            EndIf
+        EndIf
+
         oContrato := JsonObject():New()
         cTipo := IIf(AllTrim((cAliasQ)->ESPCTR) == "1", "C", "V")
 
@@ -185,6 +289,27 @@ Static Function ZcnList(oReq)
         // cabecalho -- so a listagem estava mandando o codigo cru direto pra tela.
         oContrato["vigencia"]         := (cAliasQ)->VIGE
         oContrato["unidadeVigencia"]  := AllTrim((cAliasQ)->UNVIGE)
+        oContrato["saldo"]            := (cAliasQ)->SALDO
+
+        // Data-fim calculada (nao existe campo fisico pra ela no cabecalho) -- soma a vigencia
+        // (dias/meses/anos, CN9_UNVIGE) a data de inicio, dias para encerramento = data-fim - hoje.
+        // CN9_DTINIC as vezes volta da query embutida como Character em vez de Date quando o
+        // valor no banco e NULL (quirk do TOPCONN/MSSQL com campo DATE vazio) -- sem esse guard de
+        // ValType ANTES do Do Case, MonthSum() da THREAD ERROR ("expected D") pra esses contratos.
+        dDataFimVig := (cAliasQ)->DTINIC
+        If ValType(dDataFimVig) == "D" .And. !Empty(dDataFimVig)
+            Do Case
+            Case AllTrim((cAliasQ)->UNVIGE) == "1" // Dias
+                dDataFimVig += (cAliasQ)->VIGE
+            Case AllTrim((cAliasQ)->UNVIGE) == "2" // Meses
+                dDataFimVig := MonthSum(dDataFimVig, (cAliasQ)->VIGE)
+            Case AllTrim((cAliasQ)->UNVIGE) == "3" // Anos
+                dDataFimVig := MonthSum(dDataFimVig, (cAliasQ)->VIGE * 12)
+            EndCase
+            oContrato["diasEncerramento"] := dDataFimVig - Date()
+        Else
+            oContrato["diasEncerramento"] := 0
+        EndIf
 
         cCodigo := ""
         cLoja   := ""
@@ -217,6 +342,33 @@ Static Function ZcnList(oReq)
 
 Return oResp
 
+/*/{Protheus.doc} ZcnListSeg
+Chama ZcnList capturando qualquer erro de runtime (mesmo padrao ErrorBlock/Break de ZcnTrySet)
+-- sem isso um erro na consulta nunca respondia ao Angular e a tabela ficava em "Carregando..."
+para sempre (2026-09-30). Com isso a tela recebe {success:.F., message} e mostra o erro.
+@type Static Function
+@param oReq JsonObject, ver ZcnList
+@return JsonObject, ver ZcnList
+/*/
+//=============================================================================================================================
+Static Function ZcnListSeg(oReq)
+
+    Local bPrevErr := ErrorBlock({|e| Break(e)})
+    Local oErr     := Nil
+    Local oResp    := Nil
+
+    Begin Sequence
+        oResp := ZcnList(oReq)
+    Recover Using oErr
+        oResp := JsonObject():New()
+        oResp["success"] := .F.
+        oResp["message"] := "Falha ao consultar contratos: " + AllTrim(oErr:Description)
+    End Sequence
+
+    ErrorBlock(bPrevErr)
+
+Return oResp
+
 /*/{Protheus.doc} ZcnDet
 Detalha um contrato (operacao "contratoDetalhe") -- so um atalho para ZcnMont
 a partir do payload recebido.
@@ -234,6 +386,61 @@ Static Function ZcnDet(oReq)
     If ValType(oReq["revisao"]) == "C" ; cRevisao := AllTrim(oReq["revisao"]) ; EndIf
 
 Return ZcnMont(cNumero, cRevisao)
+
+/*/{Protheus.doc} ZcnImpExp
+Abre a tela de Importar / Exportar Itens do contrato (U_RTM002App, mesma opcao do menu do
+CNTA100 via CTA100MNU) a partir da tela rtm003 (operacao "importarExportar", pedido do usuario
+2026-09-29) -- tanto pelo botao ao lado de "Incluir" (sem contrato) quanto pela acao da linha da
+listagem (com contrato). RTM002App le o contrato do CN9 POSICIONADO antes do FWCallApp, entao
+aqui so posiciona o CN9 (ou deixa em Eof quando nao ha contrato) e chama a funcao. RTM002App usa
+xFilial("CN9") nas buscas -- por isso troca cFilAnt para a filial do contrato enquanto a tela
+estiver aberta (a listagem pode mostrar contratos de outras filiais) e restaura na volta.
+O FWCallApp do rtm002 e modal: esta chamada so responde ao Angular quando a tela for fechada.
+@type Static Function
+@param oReq JsonObject, {numero, revisao, filial} (todos opcionais)
+@return JsonObject, {success, message}
+/*/
+//=============================================================================================================================
+Static Function ZcnImpExp(oReq)
+
+    Local oResp     := JsonObject():New()
+    Local aAreaCN9  := CN9->(GetArea())
+    Local cFilBkp   := cFilAnt
+    Local cNumero   := ""
+    Local cRevisao  := ""
+    Local cFilCtr   := ""
+    Local lAchou    := .F.
+
+    If ValType(oReq["numero"])  == "C" ; cNumero  := AllTrim(oReq["numero"])  ; EndIf
+    If ValType(oReq["revisao"]) == "C" ; cRevisao := AllTrim(oReq["revisao"]) ; EndIf
+    If ValType(oReq["filial"])  == "C" ; cFilCtr  := AllTrim(oReq["filial"])  ; EndIf
+
+    If !Empty(cFilCtr)
+        cFilAnt := Padr(cFilCtr, Len(cFilAnt))
+    EndIf
+
+    CN9->(dbSetOrder(1))
+    If !Empty(cNumero)
+        lAchou := CN9->(dbSeek(xFilial("CN9") + Padr(cNumero, TamSX3("CN9_NUMERO")[1]) + Padr(cRevisao, TamSX3("CN9_REVISA")[1])))
+    EndIf
+    If !lAchou
+        // Sem contrato (botao do cabecalho) ou nao encontrado: CN9 em Eof, RTM002App abre vazio.
+        CN9->(dbGoBottom())
+        CN9->(dbSkip())
+    EndIf
+
+    If !Empty(cNumero) .And. !lAchou
+        oResp["success"] := .F.
+        oResp["message"] := "Contrato " + cNumero + "/" + cRevisao + " nao encontrado na filial " + cFilAnt + "."
+    Else
+        U_RTM002App()
+        oResp["success"] := .T.
+    EndIf
+
+    cFilAnt := cFilBkp
+    RestArea(aAreaCN9)
+
+Return oResp
 
 /*/{Protheus.doc} ZcnMont
 Monta o JSON completo de um contrato (cabecalho + pessoa + planilhas/itens da
@@ -256,6 +463,7 @@ Static Function ZcnMont(cContra, cRevisa)
     Local oPla      := Nil
     Local oItm      := Nil
     Local oRev      := Nil
+    Local xExigeCrg := Nil
     Local cTipo     := ""
     Local cModelId  := ""
     Local oModel    := Nil
@@ -276,17 +484,28 @@ Static Function ZcnMont(cContra, cRevisa)
 
     If !CN9->(dbSeek(xFilial("CN9") + Padr(cContra, nTamNum) + Padr(cRevisa, nTamRev)))
         oResp["success"] := .F.
-        oResp["message"] := "Contrato [" + cContra + "] revisao [" + cRevisa + "] nao encontrado."
+        oResp["message"] := "Contrato [" + cContra + "] revisao [" + cRevisa + "] nao encontrado na filial " + AllTrim(cFilAnt) + "."
         Return oResp
     EndIf
 
     cTipo := IIf(AllTrim(CN9->CN9_ESPCTR) == "1", "C", "V")
 
     oHeader["numero"]             := AllTrim(CN9->CN9_NUMERO)
+    // Tamanho do CN9_NUMERO -- limita o campo "Numero" na alteracao em elaboracao (2026-10-20)
+    oHeader["tamanhoNumero"]      := TamSX3("CN9_NUMERO")[1]
     oHeader["revisao"]            := AllTrim(CN9->CN9_REVISA)
     oHeader["tipo"]               := cTipo
     oHeader["filial"]             := AllTrim(CN9->CN9_FILIAL)
-    oHeader["dataInicio"]         := DToS(CN9->CN9_DTINIC)
+    // ZcnDateStr (nao DToS cru): devolve "" se CN9_DTINIC estiver em branco (DToS de data vazia
+    // vira uma string de ESPACOS, nao ""-- truthy em JS, o que travava o calculo de "Data Final"
+    // no Angular, ver dataFinalCalculada()/contrato-editor.component.ts) e formata como ISO
+    // 'yyyy-MM-dd' (contrato documentado em ContratoHeader.dataInicio/contrato.model.ts) -- DToS
+    // cru devolvia "yyyyMMdd" sem tracos, incompativel com o parser de data do front.
+    oHeader["dataInicio"]         := ZcnDateStr(CN9->CN9_DTINIC)
+    // Revisao de fato (tem revisao anterior) e a mais recente do contrato -- a tela so libera a
+    // edicao da "revisao em aberto" com os dois .T. (ver ZcnTemRevAnt).
+    oHeader["revisaoDeFato"]      := ZcnTemRevAnt(cContra, CN9->CN9_REVISA)
+    oHeader["revisaoMaisRecente"] := (AllTrim(CN9->CN9_REVISA) == ZcnUltRev(cContra))
     oHeader["unidadeVigencia"]    := AllTrim(CN9->CN9_UNVIGE)
     oHeader["vigencia"]           := CN9->CN9_VIGE
     // Val(cValToChar()) = numero tanto se CN9_MOEDA for N quanto se for C ("01")
@@ -299,7 +518,7 @@ Static Function ZcnMont(cContra, cRevisa)
     oHeader["situacaoDescricao"]  := ZcnSitDesc(oHeader["situacao"])
     oHeader["temCronograma"]      := ZcnTmCrg(cContra, cRevisa)
 
-    // Campos novos do header (Fase 5, protótipo "Contratos - Alteração") -- CONFIRMADOS PELO
+    // Campos novos do header (Fase 5, prototipo "Contratos - Alteracao") -- CONFIRMADOS PELO
     // USUARIO em 2026-08-11 (2 rodadas de correcao, nomes reais substituindo os chutes
     // iniciais). Todos campos FISICOS normais (exceto justificativa/objeto/clausula, ver bloco
     // do modelo abaixo) -- ainda lidos via ZcnSFld/ZcnSFldN/ZcnSFldD por habito de seguranca
@@ -372,6 +591,24 @@ Static Function ZcnMont(cContra, cRevisa)
             oPla := JsonObject():New()
             oPla["numero"]       := AllTrim(oModelCNA:GetValue('CNA_NUMERO'))
             oPla["tipoPlanilha"] := AllTrim(oModelCNA:GetValue('CNA_TIPPLA'))
+            // "Editar Parcela" (contrato-editor) precisa saber se ESTA planilha ja salva permite
+            // cronograma financeiro/fisico -- mesma logica/candidatos de campo do lookup
+            // ZcnTpPla (usado so na criacao), agora tambem resolvida aqui pra quem abre um
+            // contrato ja existente. Xnil (campo nao localizado no dicionario) fica de fora do
+            // JSON -- o front assume permitido, mesmo comportamento de antes desta feature.
+            xExigeCrg := ZcnPlaExigeCrg(oPla["tipoPlanilha"])
+            If xExigeCrg != Nil
+                oPla["exigeCronograma"] := xExigeCrg
+            EndIf
+            // Por planilha (nao so o header.temCronograma do contrato) -- a tela de revisao
+            // so oferece "Excluir cronograma financeiro" nas planilhas que de fato tem um.
+            oPla["temCronograma"] := ZcnTmCrg(cContra, cRevisa, oPla["numero"])
+            // Parcelas do cronograma -- exibidas no "Editar Parcela" (ZcnCrgLst).
+            oPla["parcelas"]      := IIf(oPla["temCronograma"], ZcnCrgLst(cContra, cRevisa, oPla["numero"]), {})
+            // Planilha com medicao (CNE) nao pode ter os itens alterados na tela, nem em elaboracao.
+            oPla["temMedicao"]    := ZcnPlaMed(cContra, cRevisa, oPla["numero"])
+            // Planilha incluida nesta revisao -- numa revisao em aberto so essas podem ser alteradas.
+            oPla["novaNaRevisao"] := ZcnPlaNaRev(cContra, cRevisa, oPla["numero"])
             // CNA_DTINI/CNA_DTFIM (data inicio/fim da planilha) -- suposicao por analogia com
             // CN9_DTINIC, nunca confirmada -- ZcnMDat degrada pra "" se o nome estiver errado.
             oPla["dataInicio"]   := ZcnMDat(oModelCNA, 'CNA_DTINI')
@@ -392,6 +629,20 @@ Static Function ZcnMont(cContra, cRevisa)
                 oPla["pessoa"]["loja"]   := AllTrim(oModelCNA:GetValue('CNA_LOJACL'))
             EndIf
             oPla["pessoa"]["nome"] := ZcnNome(cTipo, oPla["pessoa"]["codigo"], oPla["pessoa"]["loja"])
+            oPla["pessoa"]["cgc"]  := ZcnCgc(cTipo, oPla["pessoa"]["codigo"], oPla["pessoa"]["loja"])
+            // Resumo da planilha so leitura (layout "detalhe" da tela, pedido do usuario
+            // 2026-10-09): descricao do tipo, valor total/saldo, proxima medicao e proximo
+            // reajuste. Campos lidos via ZcnMNum/ZcnMDat -- campo vazio/ausente degrada pra 0/"".
+            oPla["tipoPlanilhaDesc"] := AllTrim(Posicione("CNL", 1, xFilial("CNL") + oModelCNA:GetValue('CNA_TIPPLA'), "CNL_DESCRI"))
+            oPla["valorTotal"]       := ZcnMNum(oModelCNA, 'CNA_VLTOT')
+            oPla["saldo"]            := ZcnMNum(oModelCNA, 'CNA_SALDO')
+            // CNA_PROMED/CNA_PROXRJ confirmados no dicionario CNA (print do usuario 2026-10-09).
+            // Sem CNA_PROMED preenchido, cai na competencia da 1a parcela com saldo no cronograma.
+            oPla["proximaMedicao"]   := ZcnMDat(oModelCNA, 'CNA_PROMED')
+            If Empty(oPla["proximaMedicao"])
+                oPla["proximaMedicao"] := ZcnPlaPrxMd(cContra, cRevisa, oPla["numero"])
+            EndIf
+            oPla["proximoReajuste"]  := ZcnMDat(oModelCNA, 'CNA_PROXRJ')
 
             oPla["itens"] := {}
             For nJ := 1 To oModelCNB:Length()
@@ -400,6 +651,7 @@ Static Function ZcnMont(cContra, cRevisa)
                 oItm["item"]          := AllTrim(oModelCNB:GetValue('CNB_ITEM'))
                 oItm["produto"]       := AllTrim(oModelCNB:GetValue('CNB_PRODUT'))
                 oItm["descricao"]     := ZcnDesc(oItm["produto"])
+                oItm["unidade"]       := AllTrim(Posicione("SB1", 1, xFilial("SB1") + oModelCNB:GetValue('CNB_PRODUT'), "B1_UM"))
                 oItm["quantidade"]    := oModelCNB:GetValue('CNB_QUANT')
                 oItm["valorUnitario"] := oModelCNB:GetValue('CNB_VLUNIT')
                 oItm["tes"]           := AllTrim(oModelCNB:GetValue('CNB_TS'))
@@ -483,31 +735,81 @@ GCT0109 -- envolvido em Begin Sequence/Recover Using de proposito: se o nome
 da tabela/campo estiver errado, degrada para "sem cronograma" (.F.) em vez
 de quebrar a tela de detalhe inteira.
 @type Static Function
+Com cNumPla, conta so as parcelas daquela planilha (CNF_NUMPLA) -- usado
+na tela de revisao, que oferece excluir o cronograma planilha a planilha.
 @param cContra caractere, numero do contrato
 @param cRevisa caractere, revisao
+@param cNumPla caractere, numero da planilha (opcional -- vazio = contrato inteiro)
 @return logico, .T. se ja existe pelo menos 1 linha de cronograma
 /*/
 //=============================================================================================================================
-Static Function ZcnTmCrg(cContra, cRevisa)
+Static Function ZcnTmCrg(cContra, cRevisa, cNumPla)
 
     Local lTem      := .F.
     Local cAliasQ   := GetNextAlias()
     //Local oErrCatch := Nil
 
+    Default cNumPla := ""
+
     Begin Sequence
-        BeginSql Alias cAliasQ
-            SELECT COUNT(*) AS QTD
-              FROM %table:CNF% CNF
-             WHERE CNF.%notDel%
-               AND CNF.CNF_FILIAL = %xfilial:CNF%
-               AND CNF.CNF_CONTRA = %exp:cContra%
-               AND CNF.CNF_REVISA = %exp:cRevisa%
-        EndSql
+        If Empty(cNumPla)
+            BeginSql Alias cAliasQ
+                SELECT COUNT(*) AS QTD
+                  FROM %table:CNF% CNF
+                 WHERE CNF.%notDel%
+                   AND CNF.CNF_FILIAL = %xfilial:CNF%
+                   AND CNF.CNF_CONTRA = %exp:cContra%
+                   AND CNF.CNF_REVISA = %exp:cRevisa%
+            EndSql
+        Else
+            BeginSql Alias cAliasQ
+                SELECT COUNT(*) AS QTD
+                  FROM %table:CNF% CNF
+                 WHERE CNF.%notDel%
+                   AND CNF.CNF_FILIAL = %xfilial:CNF%
+                   AND CNF.CNF_CONTRA = %exp:cContra%
+                   AND CNF.CNF_REVISA = %exp:cRevisa%
+                   AND CNF.CNF_NUMPLA = %exp:cNumPla%
+            EndSql
+        EndIf
         lTem := (cAliasQ)->QTD > 0
         (cAliasQ)->(DbCloseArea())
     Recover Using oErrCatch
         lTem := .F.
     End Sequence
+
+Return lTem
+
+/*/{Protheus.doc} ZcnPlaMed
+Indica se a planilha ja tem medicao (itens de medicao na CNE -- CNE_NUMERO e a planilha, mesma
+ligacao usada em RTM002App.prw). Planilha medida nao pode ter os itens alterados pela tela.
+@type Static Function
+@param cContra caractere, numero do contrato
+@param cRevisa caractere, revisao
+@param cNumPla caractere, numero da planilha (CNA_NUMERO) -- vazio = qualquer planilha do contrato
+@return logico, .T. se existe ao menos um item de medicao
+/*/
+//=============================================================================================================================
+Static Function ZcnPlaMed(cContra, cRevisa, cNumPla)
+
+    Local cAliasQ := GetNextAlias()
+    Local cCtr    := Padr(cContra, TamSX3("CNE_CONTRA")[1])
+    Local cRev    := Padr(cRevisa, TamSX3("CNE_REVISA")[1])
+    Local cPla    := Padr(cNumPla, TamSX3("CNE_NUMERO")[1])
+    Local cTodas  := IIf(Empty(cNumPla), "S", "N")
+    Local lTem    := .F.
+
+    BeginSql Alias cAliasQ
+        SELECT COUNT(*) AS QTD
+          FROM %table:CNE% CNE
+         WHERE CNE.%notDel%
+           AND CNE.CNE_FILIAL = %xfilial:CNE%
+           AND CNE.CNE_CONTRA = %exp:cCtr%
+           AND CNE.CNE_REVISA = %exp:cRev%
+           AND (CNE.CNE_NUMERO = %exp:cPla% OR %exp:cTodas% = 'S')
+    EndSql
+    lTem := (cAliasQ)->QTD > 0
+    (cAliasQ)->(DbCloseArea())
 
 Return lTem
 
@@ -559,7 +861,7 @@ Static Function ZcnSFldD(cAlias, cCampo)
 
     Local xVal := ZcnSFld(cAlias, cCampo)
 
-Return IIf(ValType(xVal) == "D" .And. !Empty(xVal), DToS(xVal), "")
+Return IIf(ValType(xVal) == "D", ZcnDateStr(xVal), "")
 
 /*/{Protheus.doc} ZcnSitDesc
 Traduz o codigo de situacao do cabecalho do contrato (CN9_SITUAC) para a descricao
@@ -641,6 +943,82 @@ Static Function ZcnNome(cTipo, cCodigo, cLoja)
 
 Return cNome
 
+/*/{Protheus.doc} ZcnCgc
+CNPJ/CPF do cliente/fornecedor (A1_CGC/A2_CGC) ja formatado, para o resumo da planilha.
+@type Static Function
+@param cTipo caractere, "C" compra (SA2) ou "V" venda (SA1)
+@param cCodigo caractere, codigo
+@param cLoja caractere, loja
+@return caractere, CNPJ/CPF formatado ou "" se nao encontrado/vazio
+/*/
+//=============================================================================================================================
+Static Function ZcnCgc(cTipo, cCodigo, cLoja)
+
+    Local cCgc := ""
+
+    If Empty(cCodigo)
+        Return ""
+    EndIf
+
+    If cTipo == "C"
+        cCgc := AllTrim(Posicione("SA2", 1, xFilial("SA2") + Padr(cCodigo, TamSX3("A2_COD")[1]) + Padr(cLoja, TamSX3("A2_LOJA")[1]), "A2_CGC"))
+    Else
+        cCgc := AllTrim(Posicione("SA1", 1, xFilial("SA1") + Padr(cCodigo, TamSX3("A1_COD")[1]) + Padr(cLoja, TamSX3("A1_LOJA")[1]), "A1_CGC"))
+    EndIf
+
+    Do Case
+    Case Len(cCgc) == 14
+        cCgc := Transform(cCgc, "@R 99.999.999/9999-99")
+    Case Len(cCgc) == 11
+        cCgc := Transform(cCgc, "@R 999.999.999-99")
+    EndCase
+
+Return cCgc
+
+/*/{Protheus.doc} ZcnPlaPrxMd
+Proxima medicao da planilha: competencia (CNF_COMPET, "MM/AAAA") da primeira parcela do
+cronograma financeiro (CNF) que ainda tem saldo. Envolvido em Begin Sequence (mesma cautela de
+ZcnTmCrg): qualquer erro de campo/SQL degrada para "" em vez de quebrar a tela.
+@type Static Function
+@param cContra caractere, numero do contrato
+@param cRevisa caractere, revisao
+@param cNumPla caractere, numero da planilha (CNA_NUMERO)
+@return caractere, competencia ("MM/AAAA") ou "" se nao houver parcela em aberto
+/*/
+//=============================================================================================================================
+Static Function ZcnPlaPrxMd(cContra, cRevisa, cNumPla)
+
+    Local cAliasQ := GetNextAlias()
+    Local cCompet := ""
+    Local bPrev   := ErrorBlock({|e| Break(e)})
+
+    Begin Sequence
+        BeginSql Alias cAliasQ
+            SELECT CNF.CNF_COMPET AS COMPET
+              FROM %table:CNF% CNF
+             WHERE CNF.%notDel%
+               AND CNF.CNF_FILIAL = %xfilial:CNF%
+               AND CNF.CNF_CONTRA = %exp:cContra%
+               AND CNF.CNF_REVISA = %exp:cRevisa%
+               AND CNF.CNF_NUMPLA = %exp:cNumPla%
+               AND CNF.CNF_SALDO  > 0
+             ORDER BY CNF.CNF_PARCEL
+        EndSql
+        If (cAliasQ)->(!Eof())
+            cCompet := AllTrim((cAliasQ)->COMPET)
+        EndIf
+        (cAliasQ)->(DbCloseArea())
+    Recover
+        cCompet := ""
+        If Select(cAliasQ) > 0
+            (cAliasQ)->(DbCloseArea())
+        EndIf
+    End Sequence
+
+    ErrorBlock(bPrev)
+
+Return cCompet
+
 /*/{Protheus.doc} ZcnDesc
 Descricao de um produto (SB1), usada para exibir junto ao codigo nos itens
 de planilha e no lookup de produto.
@@ -719,6 +1097,7 @@ Static Function ZcnCriar(oReq)
     Local oItm                               := Nil
     Local oErrCatch                           := Nil
     Local dDtIniPla                            := CToD("")
+    Local nTamNum                               := 0
 
     // Filial escolhida no modal de inclusao (item 4, Angular) -- so validada aqui, NUNCA
     // gravada via SetValue em CN9MASTER: CN9_FILIAL de tabelas compartilhadas e determinado
@@ -740,6 +1119,41 @@ Static Function ZcnCriar(oReq)
     If oHeader == Nil .Or. Empty(AllTrim(oHeader["numero"]))
         oResp["success"] := .F.
         oResp["message"] := "Numero do contrato nao informado"
+        Return oResp
+    EndIf
+
+    // Numero digitado livremente na UI pode passar do tamanho de CN9_NUMERO no SX3 -- recusa aqui
+    // em vez de truncar (truncar gravaria silenciosamente outro numero e poderia colidir com um
+    // contrato existente). A partir daqui oHeader["numero"] ja vai normalizado (trim) para o
+    // dbSeek de duplicidade, SetValue de CN9_NUMERO/CNA_CONTRA e ZcnMont pos-commit.
+    nTamNum := TamSX3("CN9_NUMERO")[1]
+    oHeader["numero"] := AllTrim(oHeader["numero"])
+    If Len(oHeader["numero"]) > nTamNum
+        oResp["success"] := .F.
+        oResp["message"] := "Numero do contrato [" + oHeader["numero"] + "] excede o tamanho do campo CN9_NUMERO (" +;
+            AllTrim(Str(nTamNum)) + " caracteres, informado " + AllTrim(Str(Len(oHeader["numero"]))) + ")."
+        Return oResp
+    EndIf
+
+    // Confere duplicidade ANTES de mexer no modelo MVC -- sem isso, tentar reenviar (ex: apos um
+    // erro anterior que na verdade ja tinha comitado o registro, como o crash de ZcnMont pos-
+    // commit corrigido em ZcnMStr/ZcnMNum) faz FWLoadModel:Activate() casar com o CN9_NUMERO ja
+    // existente e a grade CNADETAIL ser auto-carregada pela relacao com as linhas JA GRAVADAS da
+    // planilha antiga, em vez de linhas novas -- e o AddLine/GoLine manuais do loop abaixo
+    // perdem a sincronia com essas linhas pre-existentes, o que explica um "CNA_NUMERO nao
+    // preenchido" na validacao mesmo com o SetValue sendo chamado normalmente no codigo.
+    CN9->(dbSetOrder(1)) // CN9_FILIAL+CN9_NUMERO+CN9_REVISA
+    If CN9->(dbSeek(xFilial("CN9") + Padr(AllTrim(oHeader["numero"]), TamSX3("CN9_NUMERO")[1])))
+        oResp["success"] := .F.
+        oResp["message"] := "Contrato [" + AllTrim(oHeader["numero"]) + "] ja existe (revisao [" + AllTrim(CN9->CN9_REVISA) + "]). Use 'Nova Revisao' para altera-lo ou informe outro numero."
+        Return oResp
+    EndIf
+
+    // Data de inicio livre na inclusao (pedido do usuario 2026-10-09: retirada a trava de "nao pode
+    // ser anterior a data base"), so obrigatoria.
+    If Empty(ZcnSToD(oHeader["dataInicio"]))
+        oResp["success"] := .F.
+        oResp["message"] := "Data de inicio do contrato nao informada"
         Return oResp
     EndIf
 
@@ -890,14 +1304,9 @@ Static Function ZcnCriar(oReq)
         // "O campo Data Inicial (CNA_DTINI) nao foi preenchido" na inclusao. So cai para a data
         // de inicio da planilha/contrato se a Data base nao vier preenchida. Ver tambem ZcnSToD
         // (o bug real era SToD() recebendo a data ISO com tracos, nao a origem do valor).
-        dDtIniPla := CToD("")
-        If ValType(oPla["dataBase"]) == "C" .And. !Empty(AllTrim(oPla["dataBase"]))
-            dDtIniPla := ZcnSToD(oPla["dataBase"])
-        ElseIf ValType(oPla["dataInicio"]) == "C" .And. !Empty(AllTrim(oPla["dataInicio"]))
-            dDtIniPla := ZcnSToD(oPla["dataInicio"])
-        ElseIf ValType(oHeader["dataInicio"]) == "C" .And. !Empty(AllTrim(oHeader["dataInicio"]))
-            dDtIniPla := ZcnSToD(oHeader["dataInicio"])
-        EndIf
+        // Pedido do usuario 2026-10-09: na inclusao a Data base (CNA_DTINI) de toda planilha e
+        // IGUAL a data de inicio do contrato -- ignora o que vier na planilha.
+        dDtIniPla := ZcnSToD(oHeader["dataInicio"])
         If !Empty(dDtIniPla)
             ZcnTrySet(oModel, aFalhas, 'CNADETAIL', 'CNA_DTINI', dDtIniPla)
         EndIf
@@ -912,7 +1321,6 @@ Static Function ZcnCriar(oReq)
         ZcnPlaSet(oModel, aFalhas, aAvisos, "periodicidade", 'CNADETAIL', oPla["periodicidade"])
         ZcnPlaSet(oModel, aFalhas, aAvisos, "unidadePer", 'CNADETAIL', oPla["unidadePer"])
         ZcnPlaSet(oModel, aFalhas, aAvisos, "modoReajuste", 'CNADETAIL', oPla["modoReajuste"])
-        ZcnPlaSet(oModel, aFalhas, aAvisos, "dataBase", 'CNADETAIL', oPla["dataBase"])
 
         aItens := oPla["itens"]
         If ValType(aItens) != "A" ; aItens := {} ; EndIf
@@ -920,35 +1328,22 @@ Static Function ZcnCriar(oReq)
             oItm := aItens[nI]
             // Itens (CNBDETAIL) sao relativos a linha CORRENTE de CNADETAIL (relacionamento
             // pai-filho resolvido pelo proprio MVC) -- por isso o GoLine(nP) da CNA acima e
-            // indispensavel antes deste bloco, e o GoLine(nI) abaixo pela mesma razao.
-            If oModelCNB:Length() < nI
-                oModelCNB:AddLine()
+            // indispensavel antes deste bloco. Linha 1 ja vem pronta no grid; da 2a em diante
+            // ZcnAddLn confere que a linha foi de fato criada (ver nota la).
+            If oModelCNB:Length() >= nI
+                oModelCNB:GoLine(nI)
+            ElseIf !ZcnAddLn(oModel, oModelCNB, aFalhas, "item " + StrZero(nI, Len(CNB->CNB_ITEM)) + " da planilha " + StrZero(nP, Len(CNA->CNA_NUMERO)))
+                Exit
             EndIf
-            oModelCNB:GoLine(nI)
 
-            oModel:SetValue('CNBDETAIL', 'CNB_ITEM'  , StrZero(nI, Len(CNB->CNB_ITEM)))
-            oModel:SetValue('CNBDETAIL', 'CNB_PRODUT', AllTrim(oItm["produto"]))
-            oModel:SetValue('CNBDETAIL', 'CNB_QUANT' , oItm["quantidade"])
-            oModel:SetValue('CNBDETAIL', 'CNB_VLUNIT', oItm["valorUnitario"])
-            // IMPORTANTE: CNB_TS/CNB_PEDTIT sao campos oficiais confirmados no GCT0109
-            // (exemplos "Inclusão de contrato"/"...de vendas"). CNB_CC/CNB_PERDES (centro de
-            // custo/desconto percentual) sao suposicoes -- convencao padrao Protheus, mas nao
-            // aparecem em nenhum exemplo do GCT0109; SetValue em campo que o modelo nao
-            // reconhece normalmente e ignorado (nao quebra), mas confirmar se o valor nao
-            // for persistido.
-            If ValType(oItm["tes"]) == "C" .And. !Empty(AllTrim(oItm["tes"]))
-                oModel:SetValue('CNBDETAIL', 'CNB_TS', AllTrim(oItm["tes"]))
-            EndIf
-            If ValType(oItm["cc"]) == "C" .And. !Empty(AllTrim(oItm["cc"]))
-                ZcnTrySet(oModel, aFalhas, 'CNBDETAIL', 'CNB_CC', AllTrim(oItm["cc"]))
-            EndIf
-            If ValType(oItm["pedTit"]) == "C" .And. !Empty(AllTrim(oItm["pedTit"]))
-                oModel:SetValue('CNBDETAIL', 'CNB_PEDTIT', AllTrim(oItm["pedTit"]))
-            EndIf
-            If ValType(oItm["desconto"]) == "N" .And. oItm["desconto"] > 0
-                ZcnTrySet(oModel, aFalhas, 'CNBDETAIL', 'CNB_PERDES', oItm["desconto"])
+            ZcnItmGrv(oModel, aFalhas, oItm, StrZero(nI, Len(CNB->CNB_ITEM)))
+            If Len(aFalhas) > 0
+                Exit
             EndIf
         Next nI
+        If Len(aFalhas) > 0
+            Exit
+        EndIf
     Next nP
 
     // CNA_DTINI/DTFIM/CNB_CC/CNB_PERDES sao suposicoes de nome (ver notas acima) -- via
@@ -961,10 +1356,10 @@ Static Function ZcnCriar(oReq)
         Return oResp
     EndIf
 
-    // Campos adicionais do header (Fase 5, protótipo "Contratos - Alteração", 2026-08-11),
+    // Campos adicionais do header (Fase 5, prototipo "Contratos - Alteracao", 2026-08-11),
     // TODOS CONFIRMADOS PELO USUARIO -- movidos para DEPOIS de CNC/CNA/CNB de proposito, pra
     // que gatilhos/validacoes desses campos nao interfiram na preparacao das grades do MVC.
-    // CN9_JUSTIF/CN9_OBJCTO/CN9_ALTCLA sao campos VIRTUAIS (memo), graváveis via oModel:SetValue
+    // CN9_JUSTIF/CN9_OBJCTO/CN9_ALTCLA sao campos VIRTUAIS (memo), gravaveis via oModel:SetValue
     // normalmente. Os demais (valorPresente/indice/centroCusto/responsavel) continuam SEM
     // gravar -- ainda nao confirmados, so leitura segura em ZcnMont via ZcnSFld.
     If ValType(oHeader["justificativa"]) == "C"
@@ -1010,7 +1405,7 @@ Static Function ZcnCriar(oReq)
         // NAO confia em oModel:GetValue('CN9MASTER','CN9_REVISA') logo apos o CommitData() pra
         // pegar a revisao -- confirmado em teste real que pode vir vazio nesse ponto (o valor
         // real so aparece de fato gravado na tabela, nao necessariamente no cache do model logo
-        // apos o commit). Relê direto do alias CN9 (dbSeek so por filial+numero, a 1a e unica
+        // apos o commit). Rele direto do alias CN9 (dbSeek so por filial+numero, a 1a e unica
         // revisao que um contrato recem-criado pode ter) -- fonte confiavel, e a mesma tecnica
         // que ZcnMont ja usa como fallback quando recebe revisao vazia.
         cNumero := AllTrim(oHeader["numero"])
@@ -1018,6 +1413,11 @@ Static Function ZcnCriar(oReq)
         If CN9->(dbSeek(xFilial("CN9") + Padr(cNumero, TamSX3("CN9_NUMERO")[1])))
             cRevisao := AllTrim(CN9->CN9_REVISA)
         EndIf
+
+        // Acesso total (CNN) para quem incluiu -- o CNTA300/CNTA301 bloqueia a visualizacao
+        // ("sem acesso ao contrato") de quem nao estiver na CNN, e a inclusao via modelo nao
+        // grava esse registro sozinha. Demais usuarios: acao "Acessos" da listagem (ZcnAcAdd).
+        ZcnAcGrv(cNumero, __cUserId, ZcnAcTot())
 
         oResp := ZcnMont(cNumero, cRevisao)
         If Len(aAvisos) > 0
@@ -1102,6 +1502,116 @@ Static Function ZcnTrySet(oMdl, aFalhas, cGrid, cField, xValue)
 
 Return Nil
 
+/*/{Protheus.doc} ZcnSetChk
+Como ZcnTrySet, mas tambem confere o RETORNO do SetValue -- .F. (validacao do campo recusou o
+valor) vira falha em aFalhas com a mensagem do modelo, em vez de seguir em silencio.
+@type Static Function
+@param oMdl objeto, modelo ativo
+@param aFalhas array, acumulador de falhas
+@param cGrid caractere, id do submodelo
+@param cField caractere, campo
+@param xValue generico, valor
+@return logico, .T. se gravou
+/*/
+//=============================================================================================================================
+Static Function ZcnSetChk(oMdl, aFalhas, cGrid, cField, xValue)
+
+    Local bPrevErr := ErrorBlock({|e| Break(e)})
+    Local oErr     := Nil
+    Local lOk      := .F.
+    Local cMsg     := ""
+
+    Begin Sequence
+        lOk := oMdl:SetValue(cGrid, cField, xValue)
+        If ValType(lOk) != "L"
+            lOk := .T.
+        EndIf
+        If !lOk
+            cMsg := ZcnErrMsg(oMdl)
+            AAdd(aFalhas, cGrid + "." + cField + ": " + IIf(Empty(cMsg), "valor recusado pelo modelo", cMsg))
+        EndIf
+    Recover Using oErr
+        lOk := .F.
+        AAdd(aFalhas, cGrid + "." + cField + ": " + AllTrim(oErr:Description))
+    End Sequence
+
+    ErrorBlock(bPrevErr)
+
+Return lOk
+
+/*/{Protheus.doc} ZcnAddLn
+Inclui uma linha no grid e posiciona nela, CONFERINDO que a linha foi de fato criada. Antes o
+AddLine() era chamado sem checar o retorno: quando a validacao da linha anterior recusava a
+inclusao, o GoLine(n) seguinte nao saia da linha atual e os SetValue do proximo item
+sobrescreviam o item anterior -- ao confirmar uma planilha com varios produtos, sobrava so um
+(2026-10-07). Agora a falha volta em aFalhas com a mensagem do modelo.
+@type Static Function
+@param oMdl objeto, modelo ativo
+@param oGrid objeto, submodelo grid (ex.: CNBDETAIL)
+@param aFalhas array, acumulador de falhas
+@param cDesc caractere, descricao da linha para a mensagem (ex.: "item 002")
+@return logico, .T. se a linha foi incluida e posicionada
+/*/
+//=============================================================================================================================
+Static Function ZcnAddLn(oMdl, oGrid, aFalhas, cDesc)
+
+    Local nAntes := oGrid:Length()
+    Local cMsg   := ""
+
+    oGrid:AddLine()
+    If oGrid:Length() <= nAntes
+        cMsg := ZcnErrMsg(oMdl)
+        AAdd(aFalhas, "Nao foi possivel incluir o " + cDesc + IIf(Empty(cMsg), ".", ": " + cMsg))
+        Return .F.
+    EndIf
+    oGrid:GoLine(oGrid:Length())
+
+Return .T.
+
+/*/{Protheus.doc} ZcnItmGrv
+Grava os campos de um item (CNBDETAIL) na linha JA POSICIONADA do grid -- usado na inclusao
+(ZcnCriar), na revisao (ZcnRevAb) e na alteracao dos itens em elaboracao (ZcnAtuItens).
+Produto, quantidade e valor unitario conferem o retorno (ZcnSetChk); os demais seguem a mesma
+tolerancia de antes (CNB_CC/CNB_PERDES sao suposicoes de nome, via ZcnTrySet).
+@type Static Function
+@param oMdl objeto, modelo ativo
+@param aFalhas array, acumulador de falhas
+@param oItm JsonObject, {produto, quantidade, valorUnitario, tes, cc, pedTit, desconto}
+@param cItem caractere, CNB_ITEM a gravar (vazio = mantem o da linha)
+@return Nil
+/*/
+//=============================================================================================================================
+Static Function ZcnItmGrv(oMdl, aFalhas, oItm, cItem)
+
+    Local nQtdFal := Len(aFalhas)
+
+    If !Empty(cItem)
+        oMdl:SetValue('CNBDETAIL', 'CNB_ITEM', cItem)
+    EndIf
+    If AllTrim(oMdl:GetValue('CNBDETAIL', 'CNB_PRODUT')) != AllTrim(oItm["produto"])
+        ZcnSetChk(oMdl, aFalhas, 'CNBDETAIL', 'CNB_PRODUT', AllTrim(oItm["produto"]))
+    EndIf
+    If Len(aFalhas) > nQtdFal
+        Return Nil
+    EndIf
+    ZcnSetChk(oMdl, aFalhas, 'CNBDETAIL', 'CNB_QUANT' , oItm["quantidade"])
+    ZcnSetChk(oMdl, aFalhas, 'CNBDETAIL', 'CNB_VLUNIT', oItm["valorUnitario"])
+    // CNB_TS/CNB_PEDTIT confirmados no GCT0109; CNB_CC/CNB_PERDES sao suposicoes (ver ZcnCriar).
+    If ValType(oItm["tes"]) == "C" .And. !Empty(AllTrim(oItm["tes"]))
+        oMdl:SetValue('CNBDETAIL', 'CNB_TS', AllTrim(oItm["tes"]))
+    EndIf
+    If ValType(oItm["cc"]) == "C" .And. !Empty(AllTrim(oItm["cc"]))
+        ZcnTrySet(oMdl, aFalhas, 'CNBDETAIL', 'CNB_CC', AllTrim(oItm["cc"]))
+    EndIf
+    If ValType(oItm["pedTit"]) == "C" .And. !Empty(AllTrim(oItm["pedTit"]))
+        oMdl:SetValue('CNBDETAIL', 'CNB_PEDTIT', AllTrim(oItm["pedTit"]))
+    EndIf
+    If ValType(oItm["desconto"]) == "N" .And. (oItm["desconto"] > 0 .Or. ZcnMNum(oMdl:GetModel('CNBDETAIL'), 'CNB_PERDES') > 0)
+        ZcnTrySet(oMdl, aFalhas, 'CNBDETAIL', 'CNB_PERDES', oItm["desconto"])
+    EndIf
+
+Return Nil
+
 /*/{Protheus.doc} ZcnAtu
 Atualiza SO os campos descritivos do header de um contrato JA EXISTENTE
 (operacao "contratoAtualizar") -- Fase 5, tela unica de Cadastrais/Historico,
@@ -1114,7 +1624,10 @@ mais abaixo neste arquivo). Todos os campos aqui sao os mesmos adicionados em
 ZcnCriar (mesmas suposicoes de nome, exceto CN9_JUSTIF que e campo virtual
 real).
 @type Static Function
-@param oReq JsonObject, {numero, revisao (opcional, usa CN9_REVATU se vazio), header:{justificativa,dtAssinatura,reajuste,indice,despesaFinanceira,objeto,clausula,natureza,centroCusto,responsavel}}
+Excecao (pedido do usuario 2026-10-07): enquanto o contrato estiver EM ELABORACAO (CN9_SITUAC
+"02"), "planilhas" pode trazer os itens de planilhas SEM medicao para serem regravados no mesmo
+commit (ZcnAtuItens) -- a mesma edicao que o CNTA300 nativo permite nessa situacao.
+@param oReq JsonObject, {numero, revisao (opcional, usa CN9_REVATU se vazio), header:{justificativa,dtAssinatura,reajuste,indice,despesaFinanceira,objeto,clausula,natureza,centroCusto,responsavel}, planilhas:[{numero, itens:[...]}] (opcional)}
 @return JsonObject, ver ZcnMont (ou {success:.F., message})
 /*/
 //=============================================================================================================================
@@ -1132,9 +1645,22 @@ Static Function ZcnAtu(oReq)
     Local nTamRev  := 0
     Local aFalhas  := {}
     Local aAvisos  := {}
+    Local aPlaItm  := oReq["planilhas"]
+    Local aPlaNov  := oReq["planilhasNovas"]
+    Local nP       := 0
+    Local nI       := 0
+    Local nMaxPla  := 0
+    Local lRevAb   := .F.
+    Local aPlaExc  := oReq["excluirPlanilhas"]
+    Local oMdlCNA  := Nil
+    Local aItmDel  := {}
+    Local cNovoNum := ""
 
     If ValType(oReq["numero"]) == "C" ; cNumero  := AllTrim(oReq["numero"])  ; EndIf
     If ValType(oReq["revisao"]) == "C" ; cRevisao := AllTrim(oReq["revisao"]) ; EndIf
+    If ValType(aPlaItm) != "A" ; aPlaItm := {} ; EndIf
+    If ValType(aPlaNov) != "A" ; aPlaNov := {} ; EndIf
+    If ValType(aPlaExc) != "A" ; aPlaExc := {} ; EndIf
 
     If Empty(cNumero) .Or. oHeader == Nil
         oResp["success"] := .F.
@@ -1156,14 +1682,103 @@ Static Function ZcnAtu(oReq)
         Return oResp
     EndIf
 
+    // Revisao em aberto (Em Revisao/Alcadas, pedido do usuario 2026-10-09): pode incluir planilhas
+    // e alterar as que foram incluidas NESTA revisao -- as herdadas da revisao anterior nao.
+    lRevAb := AllTrim(CN9->CN9_SITUAC) $ "09/A"
+    // Trava (2026-10-09): registro "Em Revisao" que NAO e uma revisao de fato (a revisao original,
+    // ou uma revisao que nao e a mais recente) nunca e alterado por aqui -- foi assim que a planilha
+    // nova acabou gravada no contrato original em vez da revisao.
+    If lRevAb .And. (!ZcnTemRevAnt(cNumero, cRevisao) .Or. AllTrim(cRevisao) != ZcnUltRev(cNumero))
+        oResp["success"] := .F.
+        oResp["message"] := "O registro " + cNumero + "/" + cRevisao + " nao e a revisao em aberto do contrato -- nada foi gravado. " + ;
+            "Abra a revisao pela opcao 'Alterar Revisao' da listagem."
+        Return oResp
+    EndIf
+    If Len(aPlaItm) > 0 .And. AllTrim(CN9->CN9_SITUAC) != "02" .And. !lRevAb
+        oResp["success"] := .F.
+        oResp["message"] := "As planilhas so podem ser alteradas com o contrato em elaboracao ou com a revisao em aberto."
+        Return oResp
+    EndIf
+    If lRevAb
+        For nP := 1 To Len(aPlaItm)
+            If (ValType(aPlaItm[nP]) $ "JO") .And. ValType(aPlaItm[nP]["numero"]) == "C" .And. ;
+               !ZcnPlaNaRev(cNumero, cRevisao, AllTrim(aPlaItm[nP]["numero"]))
+                oResp["success"] := .F.
+                oResp["message"] := "A planilha " + AllTrim(aPlaItm[nP]["numero"]) + " veio da revisao anterior e nao pode ser alterada -- inclua uma nova planilha."
+                Return oResp
+            EndIf
+        Next nP
+    EndIf
+    // Exclusao de planilhas ja gravadas (pedido do usuario 2026-10-09): mesmas regras da alteracao
+    // -- em elaboracao, ou planilha incluida na revisao em aberto; nunca planilha com medicao.
+    For nP := 1 To Len(aPlaExc)
+        If AllTrim(CN9->CN9_SITUAC) != "02" .And. !(lRevAb .And. ZcnPlaNaRev(cNumero, cRevisao, AllTrim(cValToChar(aPlaExc[nP]))))
+            oResp["success"] := .F.
+            oResp["message"] := "A planilha " + AllTrim(cValToChar(aPlaExc[nP])) + " nao pode ser excluida (so em elaboracao ou se incluida na revisao em aberto)."
+            Return oResp
+        EndIf
+        If ZcnPlaMed(cNumero, cRevisao, AllTrim(cValToChar(aPlaExc[nP])))
+            oResp["success"] := .F.
+            oResp["message"] := "A planilha " + AllTrim(cValToChar(aPlaExc[nP])) + " ja possui medicao e nao pode ser excluida."
+            Return oResp
+        EndIf
+    Next nP
+
+    // Planilhas novas (pedido do usuario 2026-10-07): em elaboracao sem NENHUMA medicao no
+    // contrato, ou numa revisao em aberto.
+    If Len(aPlaNov) > 0 .And. AllTrim(CN9->CN9_SITUAC) != "02" .And. !lRevAb
+        oResp["success"] := .F.
+        oResp["message"] := "Novas planilhas so podem ser incluidas com o contrato em elaboracao ou com a revisao em aberto."
+        Return oResp
+    EndIf
+    If Len(aPlaNov) > 0 .And. !lRevAb .And. ZcnPlaMed(cNumero, cRevisao, "")
+        oResp["success"] := .F.
+        oResp["message"] := "O contrato ja possui medicao -- nao e possivel incluir novas planilhas."
+        Return oResp
+    EndIf
+
     cTipo    := IIf(AllTrim(CN9->CN9_ESPCTR) == "1", "C", "V")
     cModelId := IIf(cTipo == "C", "CNTA300", "CNTA301")
+
+    // Troca do numero (pedido do usuario 2026-10-20): so em elaboracao, validada ANTES de gravar
+    // qualquer coisa; a troca em si (ZcnRenum) roda depois do commit do modelo.
+    If ValType(oReq["novoNumero"]) == "C" ; cNovoNum := AllTrim(oReq["novoNumero"]) ; EndIf
+    If !Empty(cNovoNum) .And. cNovoNum != cNumero
+        If AllTrim(CN9->CN9_SITUAC) != "02"
+            oResp["success"] := .F.
+            oResp["message"] := "O numero so pode ser alterado com o contrato em elaboracao."
+            Return oResp
+        EndIf
+        If Len(cNovoNum) > TamSX3("CN9_NUMERO")[1]
+            oResp["success"] := .F.
+            oResp["message"] := "O numero do contrato deve ter no maximo " + cValToChar(TamSX3("CN9_NUMERO")[1]) + " caracteres."
+            Return oResp
+        EndIf
+        cMsg := ZcnNumDup(cNovoNum, cTipo, ZcnPesCtr(CN9->CN9_FILIAL, cNumero, cRevisao, cTipo))
+        If !Empty(cMsg)
+            oResp["success"] := .F.
+            oResp["message"] := cMsg + " Nada foi gravado."
+            Return oResp
+        EndIf
+        // ZcnPesCtr/ZcnNumDup reposicionam CNC/CN9 -- volta para o contrato em alteracao.
+        CN9->(dbSetOrder(1))
+        CN9->(dbSeek(xFilial("CN9") + Padr(cNumero, nTamNum) + Padr(cRevisao, nTamRev)))
+    Else
+        cNovoNum := ""
+    EndIf
 
     Begin Sequence
 
     oModel := FWLoadModel(cModelId)
     oModel:SetOperation(MODEL_OPERATION_UPDATE)
-    oModel:Activate()
+    // Confere o Activate -- seguir com o modelo inativo estoura THREAD ERROR no 1o SetValue
+    // (mesmo caso de ZcnRevAb, 2026-10-09).
+    If !oModel:Activate()
+        cMsg := ZcnErrMsg(oModel)
+        oResp["success"] := .F.
+        oResp["message"] := "Nao foi possivel abrir o contrato " + cNumero + "/" + cRevisao + " para alteracao." + IIf(Empty(cMsg), "", " " + cMsg)
+        Return oResp
+    EndIf
 
     // Mesmo bloco de campos confirmados de ZcnCriar (ver as notas la) -- so os CONFIRMADOS
     // pelo usuario sao gravados; os que ainda nao foram confirmados (valorPresente/indice/
@@ -1204,18 +1819,78 @@ Static Function ZcnAtu(oReq)
         oModel:SetValue('CN9MASTER', 'CN9_NATURE', AllTrim(oHeader["natureza"]))
     EndIf
 
+    // Planilhas excluidas: primeiro o cronograma (CNF), depois a linha da planilha (CNA).
+    For nP := 1 To Len(aPlaExc)
+        If !ZcnPosPla(oModel, AllTrim(cValToChar(aPlaExc[nP])))
+            AAdd(aFalhas, "planilha " + AllTrim(cValToChar(aPlaExc[nP])) + " nao encontrada no contrato.")
+        Else
+            ZcnRvDlCrg(oModel, aFalhas, AllTrim(cValToChar(aPlaExc[nP])))
+            If Len(aFalhas) == 0 .And. ZcnPosPla(oModel, AllTrim(cValToChar(aPlaExc[nP]))) .And. ;
+               !oModel:GetModel('CNADETAIL'):DeleteLine()
+                AAdd(aFalhas, "nao foi possivel excluir a planilha " + AllTrim(cValToChar(aPlaExc[nP])) + ". " + ZcnErrMsg(oModel))
+            EndIf
+        EndIf
+        If Len(aFalhas) > 0
+            oModel:DeActivate()
+            oResp["success"] := .F.
+            oResp["message"] := "Falha ao excluir a planilha: " + aFalhas[1]
+            Return oResp
+        EndIf
+    Next nP
+
+    // Itens das planilhas (so em elaboracao, conferido acima) -- planilha a planilha.
+    For nP := 1 To Len(aPlaItm)
+        ZcnAtuItens(oModel, aFalhas, aAvisos, aPlaItm[nP], cNumero, cRevisao, cTipo, aItmDel)
+        If Len(aFalhas) > 0
+            oModel:DeActivate()
+            oResp["success"] := .F.
+            oResp["message"] := "Falha ao alterar os itens da planilha: " + aFalhas[1]
+            Return oResp
+        EndIf
+    Next nP
+
+    // Planilhas novas -- CNA_NUMERO = maior existente + 1 (mesma regra de ZcnRevAb).
+    If Len(aPlaNov) > 0
+        oMdlCNA := oModel:GetModel('CNADETAIL')
+        For nI := 1 To oMdlCNA:Length()
+            oMdlCNA:GoLine(nI)
+            nMaxPla := Max(nMaxPla, Val(oMdlCNA:GetValue('CNA_NUMERO')))
+        Next nI
+        For nP := 1 To Len(aPlaNov)
+            nMaxPla++
+            ZcnPlaNova(oModel, aFalhas, aAvisos, aPlaNov[nP], cNumero, cTipo, StrZero(nMaxPla, Len(CNA->CNA_NUMERO)))
+            If Len(aFalhas) > 0
+                oModel:DeActivate()
+                oResp["success"] := .F.
+                oResp["message"] := "Falha ao incluir a nova planilha " + StrZero(nMaxPla, Len(CNA->CNA_NUMERO)) + ": " + aFalhas[1]
+                Return oResp
+            EndIf
+        Next nP
+    EndIf
+
     If oModel:VldData()
         oModel:CommitData()
         oModel:DeActivate()
+        ZcnCnbDel(cNumero, cRevisao, aItmDel)
+        If !Empty(cNovoNum)
+            cMsg := ZcnRenum(cNumero, cNovoNum)
+            If Empty(cMsg)
+                ZcnZlgPut(cNovoNum, cRevisao, "NUMERO_ALTERADO", "", "", "Numero do contrato alterado de " + cNumero + " para " + cNovoNum)
+                cNumero := cNovoNum
+            EndIf
+        EndIf
         oResp := ZcnMont(cNumero, cRevisao)
+        If !Empty(cNovoNum) .And. cNumero != cNovoNum
+            oResp["avisoNumero"] := "Contrato salvo, mas o numero NAO foi alterado: " + cMsg
+        EndIf
         If Len(aAvisos) > 0
             oResp["avisos"] := aAvisos
         EndIf
     Else
-        cMsg := AllTrim(oModel:GetErrorMessage()[3]) + " " + AllTrim(oModel:GetErrorMessage()[6])
+        cMsg := ZcnErrMsg(oModel)
         oModel:DeActivate()
         oResp["success"] := .F.
-        oResp["message"] := AllTrim(cMsg)
+        oResp["message"] := IIf(Empty(cMsg), "Falha na validacao do contrato.", cMsg)
     EndIf
 
     Recover Using oErrCatch
@@ -1226,6 +1901,383 @@ Static Function ZcnAtu(oReq)
     End Sequence
 
 Return oResp
+
+/*/{Protheus.doc} ZcnAtuItens
+Regrava os itens (CNBDETAIL) de UMA planilha de contrato em elaboracao, dentro do modelo ja
+ativo em MODEL_OPERATION_UPDATE (ZcnAtu). A lista da tela e a lista final da planilha, na mesma
+ordem das linhas lidas por ZcnMont: a linha N recebe o item N (mantendo o CNB_ITEM ja gravado),
+itens a mais viram linhas novas (CNB_ITEM = maior existente + 1) e linhas que sobraram (itens
+removidos na tela) sao excluidas. Recusa planilha com medicao (ZcnPlaMed).
+@type Static Function
+@param oModel objeto, modelo CNTA300/CNTA301 ativo em UPDATE
+@param aFalhas array, acumulador de falhas
+@param aAvisos array, campos nao localizados no dicionario (ZcnPlaSet)
+@param oPla JsonObject, {numero, tipoPlanilha, descricao, pessoa:{codigo,loja}, indice, periodicidade, unidadePer, modoReajuste, dataBase, itens:[{produto,quantidade,valorUnitario,tes,cc,pedTit,desconto}]} -- campos do cabecalho opcionais
+@param cContra caractere, numero do contrato
+@param cRevisa caractere, revisao
+@param cTipo caractere, "C" compra / "V" venda
+@param aItmDel array, acumulador {planilha, CNB_ITEM} dos itens excluidos (ver ZcnCnbDel)
+@return Nil
+/*/
+//=============================================================================================================================
+Static Function ZcnAtuItens(oModel, aFalhas, aAvisos, oPla, cContra, cRevisa, cTipo, aItmDel)
+
+    Local oModelCNA := oModel:GetModel('CNADETAIL')
+    Local oModelCNB := oModel:GetModel('CNBDETAIL')
+    Local aItens    := {}
+    Local cNumPla   := ""
+    Local cMsg      := ""
+    Local cItem     := ""
+    Local nLinPla   := 0
+    Local nQtdLin   := 0
+    Local nMaxItm   := 0
+    Local nI        := 0
+
+    If !(ValType(oPla) $ "JO")
+        Return Nil
+    EndIf
+    If ValType(oPla["numero"]) == "C" ; cNumPla := AllTrim(oPla["numero"]) ; EndIf
+    If ValType(oPla["itens"]) == "A" ; aItens := oPla["itens"] ; EndIf
+
+    If Empty(cNumPla)
+        AAdd(aFalhas, "numero da planilha nao informado.")
+        Return Nil
+    EndIf
+    If Len(aItens) == 0
+        AAdd(aFalhas, "a planilha " + cNumPla + " precisa de ao menos um item.")
+        Return Nil
+    EndIf
+    If ZcnPlaMed(cContra, cRevisa, cNumPla)
+        AAdd(aFalhas, "a planilha " + cNumPla + " ja possui medicao -- os itens nao podem ser alterados.")
+        Return Nil
+    EndIf
+
+    For nI := 1 To oModelCNA:Length()
+        oModelCNA:GoLine(nI)
+        If !oModelCNA:IsDeleted() .And. AllTrim(oModelCNA:GetValue('CNA_NUMERO')) == cNumPla
+            nLinPla := nI
+            Exit
+        EndIf
+    Next nI
+    If nLinPla == 0
+        AAdd(aFalhas, "planilha " + cNumPla + " nao encontrada no contrato.")
+        Return Nil
+    EndIf
+    oModelCNA:GoLine(nLinPla)
+
+    // Cabecalho da planilha (pedido do usuario 2026-10-09): em elaboracao e sem medicao a
+    // planilha inteira pode ser alterada, nao so os itens. So grava o que mudou -- SetValue com
+    // o mesmo valor ainda dispararia gatilhos/validacoes do CNTA300 a toa.
+    ZcnAtuCabPla(oModel, aFalhas, aAvisos, oPla, cTipo)
+    If Len(aFalhas) > 0
+        Return Nil
+    EndIf
+
+    nQtdLin := oModelCNB:Length()
+    For nI := 1 To nQtdLin
+        oModelCNB:GoLine(nI)
+        nMaxItm := Max(nMaxItm, Val(oModelCNB:GetValue('CNB_ITEM')))
+    Next nI
+
+    For nI := 1 To Len(aItens)
+        If nI <= nQtdLin
+            oModelCNB:GoLine(nI)
+            If oModelCNB:IsDeleted()
+                oModelCNB:UnDeleteLine()
+            EndIf
+            cItem := ""
+        Else
+            nMaxItm++
+            cItem := StrZero(nMaxItm, Len(CNB->CNB_ITEM))
+            If !ZcnAddLn(oModel, oModelCNB, aFalhas, "item " + cItem + " da planilha " + cNumPla)
+                Return Nil
+            EndIf
+        EndIf
+        ZcnItmGrv(oModel, aFalhas, aItens[nI], cItem)
+        If Len(aFalhas) > 0
+            Return Nil
+        EndIf
+    Next nI
+
+    // Itens removidos na tela -- guardados em aItmDel para ZcnCnbDel conferir depois do commit.
+    For nI := Len(aItens) + 1 To nQtdLin
+        oModelCNB:GoLine(nI)
+        If !oModelCNB:IsDeleted()
+            AAdd(aItmDel, {cNumPla, AllTrim(oModelCNB:GetValue('CNB_ITEM'))})
+        EndIf
+        If !oModelCNB:IsDeleted() .And. !oModelCNB:DeleteLine()
+            cMsg := ZcnErrMsg(oModel)
+            AAdd(aFalhas, "nao foi possivel remover o item " + AllTrim(oModelCNB:GetValue('CNB_ITEM')) + " da planilha " + cNumPla +;
+                IIf(Empty(cMsg), ".", ": " + cMsg))
+            Return Nil
+        EndIf
+    Next nI
+
+Return Nil
+
+/*/{Protheus.doc} ZcnAtuCabPla
+Grava os campos do cabecalho de uma planilha EXISTENTE (CNADETAIL ja posicionado na linha
+dela) recebidos da tela -- so os que vieram no payload e diferem do valor atual. Mesmos campos e
+helpers de ZcnPlaNova (CNA_TIPPLA, pessoa, ZcnPlaSet para os campos resolvidos pelo dicionario).
+@type Static Function
+@param oModel objeto, modelo CNTA300/CNTA301 ativo em UPDATE
+@param aFalhas array, acumulador de falhas
+@param aAvisos array, campos nao localizados no dicionario
+@param oPla JsonObject, ver ZcnAtuItens
+@param cTipo caractere, "C" compra / "V" venda
+@return Nil
+/*/
+//=============================================================================================================================
+Static Function ZcnAtuCabPla(oModel, aFalhas, aAvisos, oPla, cTipo)
+
+    Local oMdlCNA := oModel:GetModel('CNADETAIL')
+    Local cCpoCod := IIf(cTipo == "C", 'CNA_FORNEC', 'CNA_CLIENT')
+    Local cCpoLj  := IIf(cTipo == "C", 'CNA_LJFORN', 'CNA_LOJACL')
+    Local aChaves := {{"descricao", "descPla", "C"}, {"indice", "indice", "C"}, {"periodicidade", "periodicidade", "N"}, ;
+                      {"unidadePer", "unidadePer", "C"}, {"modoReajuste", "modoReajuste", "C"}, {"dataBase", "dataBase", "D"}}
+    Local xNovo   := Nil
+    Local nI      := 0
+
+    If ValType(oPla["tipoPlanilha"]) == "C" .And. !Empty(AllTrim(oPla["tipoPlanilha"])) .And. ;
+       AllTrim(oPla["tipoPlanilha"]) != AllTrim(oMdlCNA:GetValue('CNA_TIPPLA'))
+        ZcnTrySet(oModel, aFalhas, 'CNADETAIL', 'CNA_TIPPLA', AllTrim(oPla["tipoPlanilha"]))
+    EndIf
+
+    If ValType(oPla["pessoa"]) $ "JO" .And. ValType(oPla["pessoa"]["codigo"]) == "C" .And. !Empty(AllTrim(oPla["pessoa"]["codigo"])) .And. ;
+       (AllTrim(oPla["pessoa"]["codigo"]) != AllTrim(oMdlCNA:GetValue(cCpoCod)) .Or. AllTrim(oPla["pessoa"]["loja"]) != AllTrim(oMdlCNA:GetValue(cCpoLj)))
+        ZcnTrySet(oModel, aFalhas, 'CNADETAIL', cCpoCod, AllTrim(oPla["pessoa"]["codigo"]))
+        ZcnTrySet(oModel, aFalhas, 'CNADETAIL', cCpoLj, AllTrim(oPla["pessoa"]["loja"]))
+    EndIf
+
+    For nI := 1 To Len(aChaves)
+        If Len(aFalhas) > 0
+            Exit
+        EndIf
+        xNovo := oPla[aChaves[nI][1]]
+        If xNovo == Nil .Or. (ValType(xNovo) == "C" .And. Empty(AllTrim(xNovo)))
+            Loop
+        EndIf
+        If aChaves[nI][3] == "D"
+            xNovo := ZcnSToD(xNovo)
+            If ZcnPlaGet(oMdlCNA, aChaves[nI][2], "D") == ZcnDateStr(xNovo)
+                Loop
+            EndIf
+            If xNovo < dDataBase
+                AAdd(aFalhas, "a data base da planilha (" + DToC(xNovo) + ") nao pode ser anterior a data base do sistema (" + DToC(dDataBase) + ").")
+                Exit
+            EndIf
+        ElseIf ZcnPlaGet(oMdlCNA, aChaves[nI][2], aChaves[nI][3]) == IIf(aChaves[nI][3] == "N", xNovo, AllTrim(cValToChar(xNovo)))
+            Loop
+        EndIf
+        ZcnPlaSet(oModel, aFalhas, aAvisos, aChaves[nI][2], 'CNADETAIL', xNovo)
+    Next nI
+
+Return Nil
+
+/*/{Protheus.doc} ZcnPesCtr
+Codigo do fornecedor (compra) ou cliente (venda) do contrato, lido da CNC -- mesma busca de
+ZcnList (CNC ordem 1 = FILIAL+NUMERO+REVISA).
+@type Static Function
+@param cFil caractere, filial do contrato
+@param cContra caractere, numero do contrato
+@param cRevisa caractere, revisao
+@param cTipo caractere, "C" compra / "V" venda
+@return caractere, codigo da pessoa ("" se nao achar)
+/*/
+//=============================================================================================================================
+Static Function ZcnPesCtr(cFil, cContra, cRevisa, cTipo)
+
+    Local cCod := ""
+
+    CNC->(dbSetOrder(1))
+    If CNC->(dbSeek(Padr(cFil, Len(xFilial("CNC"))) + Padr(cContra, TamSX3("CN9_NUMERO")[1]) + Padr(cRevisa, TamSX3("CN9_REVISA")[1])))
+        cCod := AllTrim(IIf(cTipo == "C", CNC->CNC_CODIGO, CNC->CNC_CLIENT))
+    EndIf
+
+Return cCod
+
+/*/{Protheus.doc} ZcnNumDup
+Valida o NOVO numero de um contrato em elaboracao (pedido do usuario 2026-10-20). Recusa se:
+- ja existe contrato com esse numero NESTA filial (chave do CN9 e FILIAL+NUMERO+REVISA, nao da
+  pra ter dois iguais aqui, seja qual for o fornecedor/cliente);
+- ja existe contrato com esse numero em OUTRA filial para o mesmo fornecedor (compra) ou
+  cliente (venda).
+@type Static Function
+@param cNovo caractere, numero pretendido
+@param cTipo caractere, "C" compra / "V" venda (do contrato que esta sendo alterado)
+@param cCodPes caractere, fornecedor/cliente do contrato que esta sendo alterado
+@return caractere, mensagem de recusa ("" = numero livre)
+/*/
+//=============================================================================================================================
+Static Function ZcnNumDup(cNovo, cTipo, cCodPes)
+
+    Local cAliasQ := GetNextAlias()
+    Local cNum    := Padr(cNovo, TamSX3("CN9_NUMERO")[1])
+    Local cMsg    := ""
+    Local cTipoQ  := ""
+
+    BeginSql Alias cAliasQ
+        SELECT CN9.CN9_FILIAL AS FILIAL, CN9.CN9_REVISA AS REVISA, CN9.CN9_ESPCTR AS ESPCTR
+          FROM %table:CN9% CN9
+         WHERE CN9.%notDel%
+           AND CN9.CN9_NUMERO = %exp:cNum%
+         ORDER BY CN9.CN9_FILIAL, CN9.CN9_REVISA
+    EndSql
+    While (cAliasQ)->(!Eof()) .And. Empty(cMsg)
+        cTipoQ := IIf(AllTrim((cAliasQ)->ESPCTR) == "1", "C", "V")
+        If (cAliasQ)->FILIAL == xFilial("CN9")
+            cMsg := "Ja existe o contrato " + AllTrim(cNovo) + " nesta filial (" + AllTrim(xFilial("CN9")) + ")."
+        ElseIf cTipoQ == cTipo .And. !Empty(cCodPes) .And. ZcnPesCtr((cAliasQ)->FILIAL, cNovo, (cAliasQ)->REVISA, cTipoQ) == cCodPes
+            cMsg := "Ja existe o contrato " + AllTrim(cNovo) + " na filial " + AllTrim((cAliasQ)->FILIAL) + ;
+                " para o mesmo " + IIf(cTipo == "C", "fornecedor", "cliente") + " (" + cCodPes + ")."
+        EndIf
+        (cAliasQ)->(DbSkip())
+    EndDo
+    (cAliasQ)->(DbCloseArea())
+
+Return cMsg
+
+/*/{Protheus.doc} ZcnRenum
+Troca o numero de um contrato EM ELABORACAO em todas as tabelas ligadas a ele (pedido do usuario
+2026-10-20). O CNTA300 nao deixa alterar o CN9_NUMERO (e chave), entao a troca e feita registro a
+registro, numa transacao so, DEPOIS do commit do modelo em ZcnAtu. Tabelas/campos que nao
+existirem neste ambiente sao ignorados (AliasInDic/FieldPos). Em elaboracao nao ha medicao
+(CND/CNE), so o cadastro, cronograma, acessos, timeline (ZLG) e anexos (AC9).
+@type Static Function
+@param cAntigo caractere, numero atual
+@param cNovo caractere, numero novo (ja validado por ZcnNumDup)
+@return caractere, mensagem de erro ("" = ok)
+/*/
+//=============================================================================================================================
+Static Function ZcnRenum(cAntigo, cNovo)
+
+    Local aMapa    := {{"CN9", "CN9_NUMERO"}, {"CNA", "CNA_CONTRA"}, {"CNB", "CNB_CONTRA"}, {"CNC", "CNC_NUMERO"}, ;
+                       {"CNF", "CNF_CONTRA"}, {"CNS", "CNS_CONTRA"}, {"CNN", "CNN_CONTRA"}, {"CNZ", "CNZ_CONTRA"}, ;
+                       {"CNX", "CNX_CONTRA"}, {"CPD", "CPD_CONTRA"}, {"ZLG", "ZLG_CONTRA"}, {"ZLG", "ZLG_NUMERO"}}
+    Local bPrevErr := ErrorBlock({|e| Break(e)})
+    Local oErr     := Nil
+    Local cMsg     := ""
+    Local cAlias   := ""
+    Local cCampo   := ""
+    Local cAliasQ  := ""
+    Local cQuery   := ""
+    Local cChvAnt  := ""
+    Local cChvNov  := ""
+    Local nI       := 0
+
+    Begin Transaction
+    Begin Sequence
+        For nI := 1 To Len(aMapa)
+            cAlias := aMapa[nI][1]
+            cCampo := aMapa[nI][2]
+            If !AliasInDic(cAlias)
+                Loop
+            EndIf
+            DbSelectArea(cAlias)
+            If (cAlias)->(FieldPos(cCampo)) == 0
+                Loop
+            EndIf
+            cQuery := "SELECT R_E_C_N_O_ AS REC FROM " + RetSqlName(cAlias) + ;
+                      " WHERE D_E_L_E_T_ = ' '" + ;
+                      IIf((cAlias)->(FieldPos(cAlias + "_FILIAL")) > 0, " AND " + cAlias + "_FILIAL = '" + xFilial(cAlias) + "'", "") + ;
+                      " AND " + cCampo + " = '" + Padr(cAntigo, TamSX3(cCampo)[1]) + "'"
+            cAliasQ := GetNextAlias()
+            DbUseArea(.T., "TOPCONN", TcGenQry(,, cQuery), cAliasQ, .F., .T.)
+            While (cAliasQ)->(!Eof())
+                (cAlias)->(DbGoTo((cAliasQ)->REC))
+                If !RecLock(cAlias, .F.)
+                    cMsg := "registro da tabela " + cAlias + " bloqueado por outro usuario."
+                    Break
+                EndIf
+                (cAlias)->(FieldPut(FieldPos(cCampo), Padr(cNovo, TamSX3(cCampo)[1])))
+                (cAlias)->(MsUnlock())
+                (cAliasQ)->(DbSkip())
+            EndDo
+            (cAliasQ)->(DbCloseArea())
+        Next nI
+
+        // Anexos (Banco de Conhecimento): AC9_CODENT = FILIAL+NUMERO (ver ZcnAnChave)
+        cChvAnt := Padr(ZcnAnChave(cAntigo), TamSX3("AC9_CODENT")[1])
+        cChvNov := Padr(ZcnAnChave(cNovo), TamSX3("AC9_CODENT")[1])
+        cQuery  := "SELECT R_E_C_N_O_ AS REC FROM " + RetSqlName("AC9") + ;
+                   " WHERE D_E_L_E_T_ = ' ' AND AC9_FILIAL = '" + xFilial("AC9") + "'" + ;
+                   " AND AC9_ENTIDA = 'CN9' AND AC9_CODENT = '" + cChvAnt + "'"
+        cAliasQ := GetNextAlias()
+        DbUseArea(.T., "TOPCONN", TcGenQry(,, cQuery), cAliasQ, .F., .T.)
+        While (cAliasQ)->(!Eof())
+            AC9->(DbGoTo((cAliasQ)->REC))
+            If RecLock("AC9", .F.)
+                AC9->AC9_CODENT := cChvNov
+                AC9->(MsUnlock())
+            EndIf
+            (cAliasQ)->(DbSkip())
+        EndDo
+        (cAliasQ)->(DbCloseArea())
+    Recover Using oErr
+        If Empty(cMsg)
+            cMsg := IIf(ValType(oErr) == "O", AllTrim(oErr:Description), "erro desconhecido")
+        EndIf
+    End Sequence
+    If !Empty(cMsg)
+        If Select(cAliasQ) > 0
+            (cAliasQ)->(DbCloseArea())
+        EndIf
+        DisarmTransaction()
+    EndIf
+    End Transaction
+
+    ErrorBlock(bPrevErr)
+
+Return cMsg
+
+/*/{Protheus.doc} ZcnCnbDel
+Garante a exclusao dos itens removidos na tela (aItmDel, montado por ZcnAtuItens) DEPOIS do
+CommitData de ZcnAtu. Bug de producao (2026-10-20): o DeleteLine do CNBDETAIL voltava .T., o
+commit passava, mas os itens continuavam gravados e "voltavam" para a planilha ao recarregar.
+Aqui cada item que ainda existir (CNB nao deletado) e apagado direto -- se o commit do modelo ja
+tiver apagado, a query nao acha nada e nada e feito.
+@type Static Function
+@param cContra caractere, numero do contrato
+@param cRevisa caractere, revisao
+@param aItmDel array, {{planilha, CNB_ITEM}, ...}
+@return Nil
+/*/
+//=============================================================================================================================
+Static Function ZcnCnbDel(cContra, cRevisa, aItmDel)
+
+    Local cAliasQ := ""
+    Local cCtr    := Padr(cContra, TamSX3("CNB_CONTRA")[1])
+    Local cRev    := Padr(cRevisa, TamSX3("CNB_REVISA")[1])
+    Local cPla    := ""
+    Local cItm    := ""
+    Local nI      := 0
+
+    For nI := 1 To Len(aItmDel)
+        cPla    := Padr(aItmDel[nI][1], TamSX3("CNB_NUMERO")[1])
+        cItm    := Padr(aItmDel[nI][2], TamSX3("CNB_ITEM")[1])
+        cAliasQ := GetNextAlias()
+        BeginSql Alias cAliasQ
+            SELECT CNB.R_E_C_N_O_ AS RECCNB
+              FROM %table:CNB% CNB
+             WHERE CNB.%notDel%
+               AND CNB.CNB_FILIAL = %xfilial:CNB%
+               AND CNB.CNB_CONTRA = %exp:cCtr%
+               AND CNB.CNB_REVISA = %exp:cRev%
+               AND CNB.CNB_NUMERO = %exp:cPla%
+               AND CNB.CNB_ITEM   = %exp:cItm%
+        EndSql
+        While (cAliasQ)->(!Eof())
+            CNB->(DbGoTo((cAliasQ)->RECCNB))
+            If CNB->(!Eof()) .And. RecLock("CNB", .F.)
+                CNB->(DbDelete())
+                CNB->(MsUnlock())
+            EndIf
+            (cAliasQ)->(DbSkip())
+        EndDo
+        (cAliasQ)->(DbCloseArea())
+    Next nI
+
+Return Nil
 
 /*/{Protheus.doc} ZcnSitOk
 Diz se um codigo de situacao esta entre os 11 codigos padrao do CN9_SITUAC
@@ -1264,10 +2316,10 @@ Static Function ZcnSitPode(cDe, cPara)
 
     Do Case
     Case cD == "01" ; cLista := ""                 // Cancelado -- terminal
-    Case cD == "02" ; cLista := "03/01"            // Em Elaboracao
+    Case cD == "02" ; cLista := "03/05/01"          // Em Elaboracao (pedido usuario 2026-09-23: direto pra Emitido, Vigente ou Cancelado)
     Case cD == "03" ; cLista := "04/02/01"         // Emitido
     Case cD == "04" ; cLista := "05/02/01"         // Em Aprovacao
-    Case cD == "05" ; cLista := "06/07/09"         // Vigente
+    Case cD == "05" ; cLista := "06/07/09/02"      // Vigente (02 pedido usuario 2026-10-20; ZcnSit recusa se houver medicao)
     Case cD == "06" ; cLista := "05/07"            // Paralisado
     Case cD == "07" ; cLista := "08/05"            // Solicitacao de Finalizacao
     Case cD == "08" ; cLista := "05"               // Finalizado (reabertura)
@@ -1300,7 +2352,6 @@ Static Function ZcnZlgPut(cContra, cRevisa, cAcao, cAntes, cDepois, cObs)
 
     Local cUsr    := AllTrim(cUserName)
     Local cCodUsr := __cUserID
-    Local oErr    := Nil
 
     Default cObs := ""
 
@@ -1333,7 +2384,7 @@ Static Function ZcnZlgPut(cContra, cRevisa, cAcao, cAntes, cDepois, cObs)
         If ZLG->(FieldPos("ZLG_OBS"))    > 0 ; ZLG->ZLG_OBS    := cObs                      ; EndIf
     ZLG->(MsUnlock())
 
-    Recover Using oErr
+    Recover
         // ignora -- timeline e informativa, nao pode derrubar a mudanca de situacao
     End Sequence
 
@@ -1411,6 +2462,14 @@ Static Function ZcnSit(oReq)
         Return oResp
     EndIf
 
+    // Vigente -> Em Elaboracao: em elaboracao as planilhas/itens voltam a ser editaveis, o que nao
+    // pode acontecer com o contrato ja medido.
+    If cAtual == "05" .And. cSituac == "02" .And. ZcnPlaMed(cNumero, cRevisao, "")
+        oResp["success"] := .F.
+        oResp["message"] := "O contrato ja possui medicao e nao pode voltar para Em Elaboracao."
+        Return oResp
+    EndIf
+
     // Gravacao direta do CN9_SITUAC (sem CN100Situac / travas nativas)
     RecLock("CN9", .F.)
         CN9->CN9_SITUAC := cSituac
@@ -1421,6 +2480,121 @@ Static Function ZcnSit(oReq)
     ZcnZlgPut(cNumero, cRevisao, "MUDANCA_SITUACAO", cAtual, cSituac, cObs)
 
     oResp := ZcnMont(cNumero, cRevisao)
+
+Return oResp
+
+/*/{Protheus.doc} ZcnExcluir
+Exclui DEFINITIVAMENTE um contrato (operacao "contratoExcluir") -- pedido do
+usuario 2026-09-23 ("Deletar contrato" na tela, so visivel enquanto o
+contrato esta em elaboracao). NAO EXISTIA nenhuma rotina de exclusao neste
+projeto ate agora (ver nota antiga em ZcnCriar/ZcnAtu sobre isso) -- e uma
+operacao NOVA e DESTRUTIVA, sem historico de uso neste codebase.
+Guarda de seguranca: SO EXCLUI se CN9_SITUAC (da revisao) for "02" (Em
+Elaboracao) -- um contrato que ja foi emitido/aprovado/vigente tem que ser
+encerrado via mudanca de situacao (ZcnSit), nunca apagado. Essa checagem e
+feita aqui no backend (nao so escondendo o botao no Angular) porque e a
+unica garantia real contra excluir um contrato que ja saiu do rascunho.
+Usa FWLoadModel + MODEL_OPERATION_DELETE (mesmo padrao MVC oficial de
+exclusao do Protheus) -- cascateia para CNCDETAIL/CNADETAIL/CNBDETAIL via
+relacao de submodelo, igual ZcnCriar faz pra INSERT. ErrorBlock trocado por
+Break(e) ANTES do Begin Sequence (mesmo padrao de ZcnIndice, mais abaixo
+neste arquivo) -- assim Recover so entra em erro de runtime DE VERDADE (com
+objeto de erro real, :Description acessivel); as saidas esperadas (Activate/
+VldData/CommitData falhando) usam Return direto, sem passar pelo Recover.
+@type Static Function
+@param oReq JsonObject, {numero, revisao (opcional, usa CN9_REVATU se vazio)}
+@return JsonObject, {success, message}
+/*/
+//=============================================================================================================================
+Static Function ZcnExcluir(oReq)
+
+    Local oResp    := JsonObject():New()
+    Local oModel   := Nil
+    Local oErr     := Nil
+    Local bPrev    := Nil
+    Local cNumero  := ""
+    Local cRevisao := ""
+    Local cAtual   := ""
+    Local cTipo    := ""
+    Local cModelId := ""
+    Local nTamNum  := 0
+    Local nTamRev  := 0
+
+    If ValType(oReq["numero"]) == "C" ; cNumero  := AllTrim(oReq["numero"])  ; EndIf
+    If ValType(oReq["revisao"]) == "C" ; cRevisao := AllTrim(oReq["revisao"]) ; EndIf
+
+    If Empty(cNumero)
+        oResp["success"] := .F.
+        oResp["message"] := "Numero do contrato e obrigatorio."
+        Return oResp
+    EndIf
+
+    CN9->(dbSetOrder(1))
+    nTamNum := Max(TamSX3("CN9_NUMERO")[1], Len(cNumero))
+
+    If Empty(cRevisao) .And. CN9->(dbSeek(xFilial("CN9") + Padr(cNumero, nTamNum)))
+        cRevisao := AllTrim(CN9->CN9_REVATU)
+    EndIf
+    nTamRev := Max(TamSX3("CN9_REVISA")[1], Len(cRevisao))
+
+    If !CN9->(dbSeek(xFilial("CN9") + Padr(cNumero, nTamNum) + Padr(cRevisao, nTamRev)))
+        oResp["success"] := .F.
+        oResp["message"] := "Contrato [" + cNumero + "] revisao [" + cRevisao + "] nao encontrado."
+        Return oResp
+    EndIf
+
+    cAtual := AllTrim(CN9->CN9_SITUAC)
+    If cAtual != "02"
+        oResp["success"] := .F.
+        oResp["message"] := "So e possivel excluir um contrato em elaboracao (situacao atual: " + ZcnSitDesc(cAtual) + ")."
+        Return oResp
+    EndIf
+
+    cTipo    := IIf(AllTrim(CN9->CN9_ESPCTR) == "1", "C", "V")
+    cModelId := IIf(cTipo == "C", "CNTA300", "CNTA301")
+
+    bPrev := ErrorBlock({|e| Break(e)})
+    Begin Sequence
+
+    oModel := FWLoadModel(cModelId)
+    oModel:SetOperation(MODEL_OPERATION_DELETE)
+
+    If !oModel:Activate()
+        ErrorBlock(bPrev)
+        oResp["success"] := .F.
+        oResp["message"] := "Nao foi possivel ativar o modelo do contrato para exclusao." + ;
+            IIf(Empty(ZcnErrMsg(oModel)), "", " " + ZcnErrMsg(oModel))
+        Return oResp
+    EndIf
+
+    If !oModel:VldData()
+        oModel:DeActivate()
+        ErrorBlock(bPrev)
+        oResp["success"] := .F.
+        oResp["message"] := "Nao foi possivel validar a exclusao do contrato." + ;
+            IIf(Empty(ZcnErrMsg(oModel)), "", " " + ZcnErrMsg(oModel))
+        Return oResp
+    EndIf
+
+    If !oModel:CommitData()
+        oResp["success"] := .F.
+        oResp["message"] := "Falha ao excluir o contrato." + IIf(Empty(ZcnErrMsg(oModel)), "", " " + ZcnErrMsg(oModel))
+        oModel:DeActivate()
+        ErrorBlock(bPrev)
+        Return oResp
+    EndIf
+
+    oModel:DeActivate()
+    ErrorBlock(bPrev)
+
+    oResp["success"] := .T.
+    oResp["message"] := "Contrato excluido com sucesso."
+
+    Recover Using oErr
+        ErrorBlock(bPrev)
+        oResp["success"] := .F.
+        oResp["message"] := "Falha inesperada ao excluir o contrato: " + AllTrim(oErr:Description)
+    End Sequence
 
 Return oResp
 
@@ -1444,7 +2618,6 @@ Static Function ZcnTL(oReq)
     Local cAlias  := ""
     Local cQuery  := ""
     Local oEv     := Nil
-    Local oErr    := Nil
 
     If ValType(oReq["numero"]) == "C" ; cNumero := AllTrim(oReq["numero"]) ; EndIf
 
@@ -1504,7 +2677,7 @@ Static Function ZcnTL(oReq)
 
     oResp["eventos"] := aEv
 
-    Recover Using oErr
+    Recover
         If !Empty(cAlias) .And. Select(cAlias) > 0
             (cAlias)->(dbCloseArea())
         EndIf
@@ -1547,12 +2720,14 @@ Static Function ZcnAcaoDesc(cAcao)
     Case cAcao == "ALTERACAO"            ; cRet := "Contrato alterado"
     Case cAcao == "EXCLUSAO"             ; cRet := "Contrato excluido"
     Case cAcao == "MUDANCA_SITUACAO"     ; cRet := "Situacao do contrato alterada"
+    Case cAcao == "REVISAO"              ; cRet := "Revisao do contrato aberta"
     Case cAcao == "TITULO_GERADO"        ; cRet := "Titulo financeiro gerado"
     Case cAcao == "MEDICAO_INCLUSAO"     ; cRet := "Medicao incluida"
     Case cAcao == "MEDICAO_ALTERACAO"    ; cRet := "Medicao alterada"
     Case cAcao == "MEDICAO_EXCLUSAO"     ; cRet := "Medicao excluida"
     Case cAcao == "MEDICAO_ESTORNO"      ; cRet := "Medicao estornada"
     Case cAcao == "PEDIDO_COMPRA_GERADO" ; cRet := "Pedido de compra gerado"
+    Case cAcao == "NUMERO_ALTERADO"      ; cRet := "Numero do contrato alterado"
     EndCase
 Return cRet
 
@@ -1581,15 +2756,20 @@ Return cRet
 Abre uma revisao (operacao "revisaoAbrir") -- A300STpRev + FWLoadModel +
 SetOperation(INSERT) + Activate(.T.) + SetValue CN9_TIPREV/CN9_JUSTIF,
 replicando os exemplos de revisao do GCT0109.
-Comportamento generico desta fase (consistente com a tela unica de revisao
-ja aprovada para todos os 16 tipos): se "planilhas" vier preenchido, cada
-elemento entra como UMA planilha nova na revisao (mesmo padrao do exemplo
-"Revisao de aditivo", agora podendo ser mais de uma -- mesmo formato de
-payload de ZcnCriar). Regras especificas por tipo (ex: CN300RdSld no
-realinhamento, CN9_MOTPAR/CN9_DTFIMP na paralisacao) ainda nao foram
-implementadas -- ficam para um proximo incremento.
+Tela de revisao = a mesma tela do contrato (contrato-editor, modo "revisar",
+pedido do usuario 2026-09-24) -- nao existe mais a tela de selecao do tipo de
+revisao. Numa unica gravacao (um so CommitData) a revisao pode:
+  - alterar os campos do cabecalho ("header", mesmos campos de ZcnCriar);
+  - excluir o cronograma financeiro de planilhas JA EXISTENTES
+    ("excluirCronograma", lista de CNA_NUMERO) -- planilhas/itens existentes
+    NUNCA sao alterados aqui, so o cronograma pode ser removido;
+  - incluir planilhas NOVAS ("planilhas", mesmo formato de ZcnCriar), cada uma
+    com o seu proprio cronograma opcional ("cronograma", mesmos parametros do
+    Pergunte CN300CRG usados em ZcnGrCrg).
+"tipoRevisao" deixou de vir da tela: sem ele, usa o parametro MV_ZCNTREV
+(default "G" = Revisao Aberta, o tipo que libera alterar todos os campos).
 @type Static Function
-@param oReq JsonObject, {numero, revisaoBase (opcional), tipoRevisao, justificativa, planilhas:[{tipoPlanilha,itens:[...]}] (opcional)}
+@param oReq JsonObject, {numero, revisaoBase (opcional), tipoRevisao (opcional), justificativa, header:{...} (opcional), excluirCronograma:[numeroPlanilha] (opcional), planilhas:[{tipoPlanilha,pessoa,itens:[...],cronograma:{...}}] (opcional)}
 @return JsonObject, ver ZcnMont (ou {success:.F., message})
 /*/
 //=============================================================================================================================
@@ -1599,11 +2779,16 @@ Static Function ZcnRevAb(oReq)
     Local oModel         := Nil
     Local oModelCNA       := Nil
     Local oModelCNB        := Nil
+    Local oHeader           := oReq["header"]
     Local aPlanilhas         := oReq["planilhas"]
-    Local aItens              := {}
+    Local aExcCrg             := oReq["excluirCronograma"]
+    Local aFalhas              := {}
+    Local aAvisos               := {}
     Local cNumero              := ""
     Local cRevisaoBase          := ""
     Local cTipoRevisao           := ""
+    Local cTpRevCod              := ""
+    Local cTpRevEsp              := ""
     Local cJustific               := ""
     Local cModelId                 := ""
     Local cTipo                     := ""
@@ -1611,22 +2796,29 @@ Static Function ZcnRevAb(oReq)
     Local cMsg                         := ""
     Local nP                            := 0
     Local nI                             := 0
+    Local nMaxPla                         := 0
     Local oPla                            := Nil
-    Local oItm                             := Nil
     Local nTamNum                           := 0
     Local nTamRev                            := 0
     Local oErrCatch                          := Nil
-    Local dDtIniPla                          := CToD("")
+    Local lOk                                := .T.
+    Local cFalha                             := ""
+    Local bPrevErr                           := Nil
 
     If ValType(oReq["numero"]) == "C" ; cNumero := AllTrim(oReq["numero"]) ; EndIf
     If ValType(oReq["revisaoBase"]) == "C" ; cRevisaoBase := AllTrim(oReq["revisaoBase"]) ; EndIf
     If ValType(oReq["tipoRevisao"]) == "C" ; cTipoRevisao := AllTrim(oReq["tipoRevisao"]) ; EndIf
     If ValType(oReq["justificativa"]) == "C" ; cJustific := AllTrim(oReq["justificativa"]) ; EndIf
     If ValType(aPlanilhas) != "A" ; aPlanilhas := {} ; EndIf
+    If ValType(aExcCrg) != "A" ; aExcCrg := {} ; EndIf
+    If !(ValType(oHeader) $ "JO") ; oHeader := Nil ; EndIf
+    If Empty(cTipoRevisao)
+        cTipoRevisao := AllTrim(SuperGetMV("MV_ZCNTREV", .F., "G"))
+    EndIf
 
-    If Empty(cNumero) .Or. Empty(cTipoRevisao) .Or. Empty(cJustific)
+    If Empty(cNumero) .Or. Empty(cJustific)
         oResp["success"] := .F.
-        oResp["message"] := "Numero do contrato, tipo de revisao e justificativa sao obrigatorios"
+        oResp["message"] := "Numero do contrato e justificativa da revisao sao obrigatorios"
         Return oResp
     EndIf
 
@@ -1647,128 +2839,653 @@ Static Function ZcnRevAb(oReq)
     cTipo    := IIf(AllTrim(CN9->CN9_ESPCTR) == "1", "C", "V")
     cModelId := IIf(cTipo == "C", "CNTA300", "CNTA301")
 
-    A300STpRev(cTipoRevisao)
+    // CN9_TIPREV e o CODIGO do cadastro de tipos de revisao (CN0_CODIGO, ex.: "001"), validado
+    // contra CN0 ordem 1; A300STpRev recebe a ESPECIE (CN0_TIPO, 1..G). Gravar "G" direto no
+    // CN9_TIPREV dava REGNOIS no CN0 + CNTA300OPN "Informe o tipo de Revisao" (2026-09-28).
+    cTpRevCod := ZcnTpRvCod(cTipoRevisao, @cTpRevEsp)
+    If Empty(cTpRevCod)
+        oResp["success"] := .F.
+        oResp["message"] := "Nenhum tipo de revisao cadastrado (CN0) para [" + cTipoRevisao + "]. Cadastre um tipo de revisao com essa especie ou ajuste o parametro MV_ZCNTREV."
+        Return oResp
+    EndIf
+
+    A300STpRev(cTpRevEsp)
 
     // Mesmo motivo do Begin Sequence em ZcnCriar: manipulacao de modelo MVC ja quebrou com
     // erro de runtime do proprio framework nesta sessao -- converte pra JSON de erro comum em
     // vez de THREAD ERROR.
+    // ErrorBlock com Break: sem ele o Begin Sequence nao captura erro de runtime do framework
+    // (virava THREAD ERROR na tela -- 2026-10-09).
+    bPrevErr := ErrorBlock({|e| Break(e)})
     Begin Sequence
 
     oModel := FWLoadModel(cModelId)
     oModel:SetOperation(MODEL_OPERATION_INSERT)
-    oModel:Activate(.T.)
+    // Activate(.T.) = copia da revisao base. Se o CNTA300 recusar abrir a revisao (situacao do
+    // contrato, revisao ja em aberto, tipo de revisao...), devolve o motivo do modelo em vez de
+    // seguir para o SetValue com o modelo inativo ("Ative a classe (Activate) antes de utilizar
+    // este metodo", 2026-10-09).
+    If !oModel:Activate(.T.)
+        cMsg := ZcnErrMsg(oModel)
+        ErrorBlock(bPrevErr)
+        oResp["success"] := .F.
+        oResp["message"] := "Nao foi possivel abrir a revisao do contrato " + cNumero + "/" + cRevisaoBase + "." + ;
+            IIf(Empty(cMsg), " Verifique se o contrato esta vigente e sem outra revisao em aberto.", " " + cMsg)
+        Return oResp
+    EndIf
 
-    oModel:SetValue('CN9MASTER', 'CN9_TIPREV', cTipoRevisao)
+    oModel:SetValue('CN9MASTER', 'CN9_TIPREV', cTpRevCod)
     oModel:SetValue('CN9MASTER', 'CN9_JUSTIF', cJustific)
 
-    If Len(aPlanilhas) > 0
-        oModelCNA := oModel:GetModel('CNADETAIL')
-        oModelCNB := oModel:GetModel('CNBDETAIL')
+    // Cabecalho -- mesmos campos de ZcnCriar, mas via ZcnRvSet: so grava o que MUDOU em relacao
+    // a revisao base (evita disparar gatilho/validacao de campo que o usuario nem tocou) e usa
+    // ZcnTrySet por baixo, entao um campo bloqueado pelo tipo de revisao vira mensagem clara em
+    // aFalhas em vez de THREAD ERROR.
+    If oHeader != Nil
+        If ValType(oHeader["dataInicio"]) == "C" .And. !Empty(AllTrim(oHeader["dataInicio"]))
+            ZcnRvSet(oModel, aFalhas, 'CN9_DTINIC', ZcnSToD(oHeader["dataInicio"]))
+        EndIf
+        If ValType(oHeader["unidadeVigencia"]) == "C" .And. !Empty(AllTrim(oHeader["unidadeVigencia"]))
+            ZcnRvSet(oModel, aFalhas, 'CN9_UNVIGE', AllTrim(oHeader["unidadeVigencia"]))
+        EndIf
+        If ValType(oHeader["vigencia"]) == "N" .And. oHeader["vigencia"] > 0
+            ZcnRvSet(oModel, aFalhas, 'CN9_VIGE', oHeader["vigencia"])
+        EndIf
+        If ValType(oHeader["moeda"]) == "N" .And. oHeader["moeda"] > 0
+            ZcnRvSet(oModel, aFalhas, 'CN9_MOEDA', ZcnMoedaVl(oHeader["moeda"]))
+        EndIf
+        If ValType(oHeader["condPagto"]) == "C" .And. !Empty(AllTrim(oHeader["condPagto"]))
+            ZcnRvSet(oModel, aFalhas, 'CN9_CONDPG', AllTrim(oHeader["condPagto"]))
+        EndIf
+        If ValType(oHeader["tipoContrato"]) == "C" .And. !Empty(AllTrim(oHeader["tipoContrato"]))
+            ZcnRvSet(oModel, aFalhas, 'CN9_TPCTO', AllTrim(oHeader["tipoContrato"]))
+        EndIf
+        If ValType(oHeader["natureza"]) == "C" .And. !Empty(AllTrim(oHeader["natureza"]))
+            ZcnRvSet(oModel, aFalhas, 'CN9_NATURE', AllTrim(oHeader["natureza"]))
+        EndIf
+        If ValType(oHeader["dtAssinatura"]) == "C" .And. !Empty(AllTrim(oHeader["dtAssinatura"]))
+            ZcnRvSet(oModel, aFalhas, 'CN9_ASSINA', ZcnSToD(oHeader["dtAssinatura"]))
+        EndIf
+        If ValType(oHeader["objeto"]) == "C"
+            ZcnRvSet(oModel, aFalhas, 'CN9_OBJCTO', AllTrim(oHeader["objeto"]))
+        EndIf
+        If ValType(oHeader["clausula"]) == "C"
+            ZcnRvSet(oModel, aFalhas, 'CN9_ALTCLA', AllTrim(oHeader["clausula"]))
+        EndIf
+        ZcnPlaSet(oModel, aFalhas, aAvisos, "descCtr", 'CN9MASTER', oHeader["descricao"])
+    EndIf
+
+    // Cada etapa abaixo so roda se a anterior nao acumulou falha (lOk/cFalha) -- sem Break:
+    // dentro deste Begin Sequence ele cairia no Recover com oErrCatch Nil.
+    If Len(aFalhas) > 0
+        lOk    := .F.
+        cFalha := "Falha ao alterar o cabecalho do contrato na revisao: " + aFalhas[1]
+    EndIf
+
+    oModelCNA := oModel:GetModel('CNADETAIL')
+    oModelCNB := oModel:GetModel('CNBDETAIL')
+
+    // Excluir o cronograma financeiro de planilhas EXISTENTES -- as planilhas/itens em si
+    // continuam intocados (regra do usuario: planilha existente nao pode ser alterada).
+    If lOk
+        For nP := 1 To Len(aExcCrg)
+            If ValType(aExcCrg[nP]) == "C" .And. !Empty(AllTrim(aExcCrg[nP]))
+                ZcnRvDlCrg(oModel, aFalhas, AllTrim(aExcCrg[nP]))
+            EndIf
+        Next nP
+        If Len(aFalhas) > 0
+            lOk    := .F.
+            cFalha := "Falha ao excluir o cronograma financeiro: " + aFalhas[1]
+        EndIf
+    EndIf
+
+    If lOk .And. Len(aPlanilhas) > 0
+        // CNA_NUMERO da planilha nova = maior numero existente + 1 (nao GetLine() -- a
+        // numeracao das planilhas da revisao base pode ter buracos).
+        For nI := 1 To oModelCNA:Length()
+            oModelCNA:GoLine(nI)
+            nMaxPla := Max(nMaxPla, Val(oModelCNA:GetValue('CNA_NUMERO')))
+        Next nI
 
         For nP := 1 To Len(aPlanilhas)
+            If !lOk
+                Exit
+            EndIf
             oPla := aPlanilhas[nP]
 
-            oModelCNA:AddLine()
-            // Forma dispatcher (oModel:SetValue('CNADETAIL', campo, valor)), nao mais direto no
-            // submodelo -- mesma correcao de ZcnCriar, baseada no exemplo oficial completo que
-            // o usuario conseguiu (2026-08-11): CNADETAIL/CNBDETAIL nunca sao editados via
-            // objeto de submodelo direto em nenhum exemplo real, sempre via oModel:SetValue com
-            // o id do submodelo como parametro. CNA_CONTRA via LoadValue (unico campo assim).
-            oModel:LoadValue('CNADETAIL', 'CNA_CONTRA', cNumero)
-            oModel:SetValue('CNADETAIL', 'CNA_NUMERO', StrZero(oModelCNA:GetLine(), Len(CNA->CNA_NUMERO)))
-            oModel:SetValue('CNADETAIL', 'CNA_TIPPLA', AllTrim(oPla["tipoPlanilha"]))
-            // Pessoa por planilha (Fase 5, mesma mudanca de ZcnCriar) -- se a planilha da
-            // revisao trouxer "pessoa" no payload, usa ela; senao (compatibilidade com
-            // revisao-form, que ainda nao manda esse campo) cai de volta pro cliente/fornecedor
-            // ja gravado em CNCDETAIL, igual o comportamento de antes.
-            If oPla["pessoa"] != Nil .And. !Empty(AllTrim(oPla["pessoa"]["codigo"]))
-                If cTipo == "C"
-                    oModel:SetValue('CNADETAIL', 'CNA_FORNEC', AllTrim(oPla["pessoa"]["codigo"]))
-                    oModel:SetValue('CNADETAIL', 'CNA_LJFORN', AllTrim(oPla["pessoa"]["loja"]))
-                Else
-                    oModel:SetValue('CNADETAIL', 'CNA_CLIENT', AllTrim(oPla["pessoa"]["codigo"]))
-                    oModel:SetValue('CNADETAIL', 'CNA_LOJACL', AllTrim(oPla["pessoa"]["loja"]))
-                EndIf
-            Else
-                If cTipo == "C"
-                    oModel:SetValue('CNADETAIL', 'CNA_FORNEC', oModel:GetValue('CNCDETAIL', 'CNC_CODIGO'))
-                    oModel:SetValue('CNADETAIL', 'CNA_LJFORN', oModel:GetValue('CNCDETAIL', 'CNC_LOJA'))
-                Else
-                    oModel:SetValue('CNADETAIL', 'CNA_CLIENT', oModel:GetValue('CNCDETAIL', 'CNC_CLIENT'))
-                    oModel:SetValue('CNADETAIL', 'CNA_LOJACL', oModel:GetValue('CNCDETAIL', 'CNC_LOJACL'))
-                EndIf
-            EndIf
-            // CNA_DTINI (obrigatorio no modelo) -- mesma logica de ZcnCriar: prioriza a Data
-            // base da planilha (pedido do usuario), depois a data de inicio da propria planilha
-            // e, por fim (revisao-form ainda nao manda nenhum dos dois), a data de inicio ja
-            // gravada no contrato base (CN9_DTINIC, lida do proprio modelo ja ativo).
-            dDtIniPla := CToD("")
-            If ValType(oPla["dataBase"]) == "C" .And. !Empty(AllTrim(oPla["dataBase"]))
-                dDtIniPla := ZcnSToD(oPla["dataBase"])
-            ElseIf ValType(oPla["dataInicio"]) == "C" .And. !Empty(AllTrim(oPla["dataInicio"]))
-                dDtIniPla := ZcnSToD(oPla["dataInicio"])
-            Else
-                dDtIniPla := oModel:GetValue('CN9MASTER', 'CN9_DTINIC')
-            EndIf
-            If !Empty(dDtIniPla)
-                oModel:SetValue('CNADETAIL', 'CNA_DTINI', dDtIniPla)
-            EndIf
-            If ValType(oPla["dataFim"]) == "C" .And. !Empty(AllTrim(oPla["dataFim"]))
-                oModel:SetValue('CNADETAIL', 'CNA_DTFIM', ZcnSToD(oPla["dataFim"]))
+            nMaxPla++
+            ZcnPlaNova(oModel, aFalhas, aAvisos, oPla, cNumero, cTipo, StrZero(nMaxPla, Len(CNA->CNA_NUMERO)))
+
+            If Len(aFalhas) > 0
+                lOk    := .F.
+                cFalha := "Falha ao preencher a nova planilha " + StrZero(nMaxPla, Len(CNA->CNA_NUMERO)) + ": " + aFalhas[1]
+                Loop
             EndIf
 
-            aItens := oPla["itens"]
-            If ValType(aItens) != "A" ; aItens := {} ; EndIf
-            For nI := 1 To Len(aItens)
-                oItm := aItens[nI]
-                // Length() < nI (nao "nI > 1") -- mesma cautela do fix de CNCDETAIL em
-                // ZcnCriar: a linha 1 desta planilha (recem-criada por AddLine acima) pode nao
-                // vir pronta para edicao, confere antes de assumir.
-                If oModelCNB:Length() < nI
-                    oModelCNB:AddLine()
+            // Cronograma da planilha nova -- mesmo mecanismo de ZcnGrCrg (Pergunte CN300CRG +
+            // CN300PrCF), rodando com a CNADETAIL posicionada NESTA planilha, dentro do mesmo
+            // modelo da revisao (um so CommitData no fim).
+            If ValType(oPla["cronograma"]) $ "JO"
+                ZcnRvCrg(oModel, aFalhas, oPla["cronograma"])
+                If Len(aFalhas) > 0
+                    lOk    := .F.
+                    cFalha := "Falha ao gerar o cronograma da nova planilha " + StrZero(nMaxPla, Len(CNA->CNA_NUMERO)) + ": " + aFalhas[1]
                 EndIf
-                // Forma dispatcher, mesmo motivo do CNADETAIL acima.
-                oModel:SetValue('CNBDETAIL', 'CNB_ITEM'  , StrZero(nI, Len(CNB->CNB_ITEM)))
-                oModel:SetValue('CNBDETAIL', 'CNB_PRODUT', AllTrim(oItm["produto"]))
-                oModel:SetValue('CNBDETAIL', 'CNB_QUANT' , oItm["quantidade"])
-                oModel:SetValue('CNBDETAIL', 'CNB_VLUNIT', oItm["valorUnitario"])
-                // Mesma ressalva de ZcnCriar sobre CNB_CC/CNB_PERDES serem suposicoes.
-                If ValType(oItm["tes"]) == "C" .And. !Empty(AllTrim(oItm["tes"]))
-                    oModel:SetValue('CNBDETAIL', 'CNB_TS', AllTrim(oItm["tes"]))
-                EndIf
-                If ValType(oItm["cc"]) == "C" .And. !Empty(AllTrim(oItm["cc"]))
-                    oModel:SetValue('CNBDETAIL', 'CNB_CC', AllTrim(oItm["cc"]))
-                EndIf
-                If ValType(oItm["pedTit"]) == "C" .And. !Empty(AllTrim(oItm["pedTit"]))
-                    oModel:SetValue('CNBDETAIL', 'CNB_PEDTIT', AllTrim(oItm["pedTit"]))
-                EndIf
-                If ValType(oItm["desconto"]) == "N" .And. oItm["desconto"] > 0
-                    oModel:SetValue('CNBDETAIL', 'CNB_PERDES', oItm["desconto"])
-                EndIf
-            Next nI
+            EndIf
         Next nP
     EndIf
 
-    If oModel:VldData()
+    If !lOk
+        oModel:DeActivate()
+        oResp["success"] := .F.
+        oResp["message"] := cFalha
+    ElseIf oModel:VldData()
         oModel:CommitData()
         cNovaRevisao := AllTrim(oModel:GetValue('CN9MASTER', 'CN9_REVISA'))
         oModel:DeActivate()
+        // Revisao vazia no cache do modelo: usa a MAIOR revisao gravada (a recem-aberta), nunca o
+        // CN9_REVATU -- ele so muda na aprovacao e apontava a tela para a revisao ORIGINAL.
+        If Empty(cNovaRevisao) .Or. cNovaRevisao == AllTrim(cRevisaoBase)
+            cNovaRevisao := ZcnUltRev(cNumero)
+        EndIf
+        // Mesmo cuidado de ZcnCriar: CN9_REVISA pode vir vazio do cache do modelo logo apos o
+        // commit -- nesse caso ZcnMont usa CN9_REVATU (a revisao recem-aberta).
         oResp := ZcnMont(cNumero, cNovaRevisao)
+        If Len(aAvisos) > 0
+            oResp["avisos"] := aAvisos
+        EndIf
+        If oResp["success"] == .T.
+            cNovaRevisao := AllTrim(oResp["header"]["revisao"])
+            // antes/depois vazios: a timeline (ZcnTL) traduz esses campos como SITUACAO.
+            ZcnZlgPut(cNumero, cNovaRevisao, "REVISAO", "", "", "Revisao base " + cRevisaoBase + ": " + cJustific)
+        EndIf
     Else
-        cMsg := AllTrim(oModel:GetErrorMessage()[3]) + " " + AllTrim(oModel:GetErrorMessage()[6])
+        cMsg := ZcnErrMsg(oModel)
         oModel:DeActivate()
         oResp["success"] := .F.
-        oResp["message"] := AllTrim(cMsg)
+        oResp["message"] := IIf(Empty(cMsg), "Falha na validacao da revisao.", cMsg)
     EndIf
 
     Recover Using oErrCatch
         oResp := JsonObject():New()
         oResp["success"] := .F.
-        oResp["message"] := "Erro interno ao abrir revisao: " + AllTrim(oErrCatch:description) +;
-            IIf(ValType(oErrCatch:operation) == "C" .And. !Empty(oErrCatch:operation), " (" + AllTrim(oErrCatch:operation) + ")", "")
+        oResp["message"] := "Erro interno ao abrir revisao" + IIf(ValType(oErrCatch) == "O", ": " + AllTrim(oErrCatch:description) +;
+            IIf(ValType(oErrCatch:operation) == "C" .And. !Empty(oErrCatch:operation), " (" + AllTrim(oErrCatch:operation) + ")", ""), "")
     End Sequence
+    ErrorBlock(bPrevErr)
 
 Return oResp
+
+/*/{Protheus.doc} ZcnPlaNova
+Inclui uma planilha NOVA (CNADETAIL + itens CNBDETAIL) num modelo CNTA300/CNTA301 ja ativo --
+usado na revisao (ZcnRevAb) e na alteracao de contrato em elaboracao sem medicao (ZcnAtu, pedido
+do usuario 2026-10-07). Pessoa: a da planilha, ou a do contrato (CNCDETAIL) se nao vier.
+CNA_DTINI: data base > data inicio da planilha > CN9_DTINIC do modelo.
+@type Static Function
+@param oModel objeto, modelo ativo
+@param aFalhas array, acumulador de falhas
+@param aAvisos array, campos nao localizados no dicionario (ZcnPlaSet)
+@param oPla JsonObject, planilha (ver PlanilhaPayload no Angular)
+@param cNumero caractere, numero do contrato
+@param cTipo caractere, "C" compra / "V" venda
+@param cNumPla caractere, CNA_NUMERO da planilha nova
+@return Nil
+/*/
+//=============================================================================================================================
+Static Function ZcnPlaNova(oModel, aFalhas, aAvisos, oPla, cNumero, cTipo, cNumPla)
+
+    Local oModelCNB := oModel:GetModel('CNBDETAIL')
+    Local aItens    := {}
+    Local oItm      := Nil
+    Local dDtIniPla := CToD("")
+    Local nI        := 0
+
+    If !ZcnAddLn(oModel, oModel:GetModel('CNADETAIL'), aFalhas, "planilha " + cNumPla)
+        Return Nil
+    EndIf
+
+    // Forma dispatcher (oModel:SetValue('CNADETAIL', campo, valor)), nao mais direto no
+    // submodelo -- mesma correcao de ZcnCriar, baseada no exemplo oficial completo que
+    // o usuario conseguiu (2026-08-11): CNADETAIL/CNBDETAIL nunca sao editados via
+    // objeto de submodelo direto em nenhum exemplo real, sempre via oModel:SetValue com
+    // o id do submodelo como parametro. CNA_CONTRA via LoadValue (unico campo assim).
+    oModel:LoadValue('CNADETAIL', 'CNA_CONTRA', cNumero)
+    // CNA_NUMERO: com o modelo em ALTERACAO (Alterar Revisao/elaboracao, ZcnAtu) o CNTA300 recusa o
+    // SetValue no campo-chave sem avisar e a validacao final acusava "Nr Planilha (CNA_NUMERO) nao
+    // foi preenchido" (2026-10-09). Cai para LoadValue -- o numero ja e unico (maior + 1).
+    If !oModel:SetValue('CNADETAIL', 'CNA_NUMERO', cNumPla)
+        oModel:LoadValue('CNADETAIL', 'CNA_NUMERO', cNumPla)
+    EndIf
+    // CNA_REVISA da linha nova = revisao do contrato no modelo (a relacao nem sempre preenche em
+    // alteracao).
+    If Empty(oModel:GetValue('CNADETAIL', 'CNA_REVISA'))
+        oModel:LoadValue('CNADETAIL', 'CNA_REVISA', oModel:GetValue('CN9MASTER', 'CN9_REVISA'))
+    EndIf
+    If Empty(oModel:GetValue('CNADETAIL', 'CNA_NUMERO'))
+        AAdd(aFalhas, "nao foi possivel preencher o numero da planilha (CNA_NUMERO)." + ;
+            IIf(Empty(ZcnErrMsg(oModel)), "", " " + ZcnErrMsg(oModel)))
+        Return Nil
+    EndIf
+    oModel:SetValue('CNADETAIL', 'CNA_TIPPLA', AllTrim(oPla["tipoPlanilha"]))
+    // Pessoa por planilha (Fase 5, mesma mudanca de ZcnCriar) -- se a planilha da
+    // revisao trouxer "pessoa" no payload, usa ela; senao (compatibilidade com
+    // revisao-form, que ainda nao manda esse campo) cai de volta pro cliente/fornecedor
+    // ja gravado em CNCDETAIL, igual o comportamento de antes.
+    If oPla["pessoa"] != Nil .And. !Empty(AllTrim(oPla["pessoa"]["codigo"]))
+        If cTipo == "C"
+            oModel:SetValue('CNADETAIL', 'CNA_FORNEC', AllTrim(oPla["pessoa"]["codigo"]))
+            oModel:SetValue('CNADETAIL', 'CNA_LJFORN', AllTrim(oPla["pessoa"]["loja"]))
+        Else
+            oModel:SetValue('CNADETAIL', 'CNA_CLIENT', AllTrim(oPla["pessoa"]["codigo"]))
+            oModel:SetValue('CNADETAIL', 'CNA_LOJACL', AllTrim(oPla["pessoa"]["loja"]))
+        EndIf
+    Else
+        If cTipo == "C"
+            oModel:SetValue('CNADETAIL', 'CNA_FORNEC', oModel:GetValue('CNCDETAIL', 'CNC_CODIGO'))
+            oModel:SetValue('CNADETAIL', 'CNA_LJFORN', oModel:GetValue('CNCDETAIL', 'CNC_LOJA'))
+        Else
+            oModel:SetValue('CNADETAIL', 'CNA_CLIENT', oModel:GetValue('CNCDETAIL', 'CNC_CLIENT'))
+            oModel:SetValue('CNADETAIL', 'CNA_LOJACL', oModel:GetValue('CNCDETAIL', 'CNC_LOJACL'))
+        EndIf
+    EndIf
+    // CNA_DTINI (obrigatorio no modelo) -- mesma logica de ZcnCriar: prioriza a Data
+    // base da planilha (pedido do usuario), depois a data de inicio da propria planilha
+    // e, por fim (revisao-form ainda nao manda nenhum dos dois), a data de inicio ja
+    // gravada no contrato base (CN9_DTINIC, lida do proprio modelo ja ativo).
+    dDtIniPla := CToD("")
+    If ValType(oPla["dataBase"]) == "C" .And. !Empty(AllTrim(oPla["dataBase"]))
+        dDtIniPla := ZcnSToD(oPla["dataBase"])
+        If dDtIniPla < dDataBase
+            AAdd(aFalhas, "a data base da planilha (" + DToC(dDtIniPla) + ") nao pode ser anterior a data base do sistema (" + DToC(dDataBase) + ").")
+            Return Nil
+        EndIf
+    ElseIf ValType(oPla["dataInicio"]) == "C" .And. !Empty(AllTrim(oPla["dataInicio"]))
+        dDtIniPla := ZcnSToD(oPla["dataInicio"])
+    Else
+        dDtIniPla := oModel:GetValue('CN9MASTER', 'CN9_DTINIC')
+    EndIf
+    If !Empty(dDtIniPla)
+        ZcnTrySet(oModel, aFalhas, 'CNADETAIL', 'CNA_DTINI', dDtIniPla)
+    EndIf
+    If ValType(oPla["dataFim"]) == "C" .And. !Empty(AllTrim(oPla["dataFim"]))
+        ZcnTrySet(oModel, aFalhas, 'CNADETAIL', 'CNA_DTFIM', ZcnSToD(oPla["dataFim"]))
+    EndIf
+    // Campos da planilha resolvidos pelo dicionario -- mesmos de ZcnCriar. A Data base e o
+    // proprio CNA_DTINI, ja gravado acima.
+    ZcnPlaSet(oModel, aFalhas, aAvisos, "descPla", 'CNADETAIL', oPla["descricao"])
+    ZcnPlaSet(oModel, aFalhas, aAvisos, "indice", 'CNADETAIL', oPla["indice"])
+    ZcnPlaSet(oModel, aFalhas, aAvisos, "periodicidade", 'CNADETAIL', oPla["periodicidade"])
+    ZcnPlaSet(oModel, aFalhas, aAvisos, "unidadePer", 'CNADETAIL', oPla["unidadePer"])
+    ZcnPlaSet(oModel, aFalhas, aAvisos, "modoReajuste", 'CNADETAIL', oPla["modoReajuste"])
+
+    aItens := oPla["itens"]
+    If ValType(aItens) != "A" ; aItens := {} ; EndIf
+    For nI := 1 To Len(aItens)
+        oItm := aItens[nI]
+        // Length() < nI (nao "nI > 1") -- mesma cautela do fix de CNCDETAIL em
+        // ZcnCriar: a linha 1 desta planilha (recem-criada por AddLine acima) pode nao
+        // vir pronta para edicao, confere antes de assumir. Da 2a linha em diante,
+        // ZcnAddLn confere que a linha foi de fato criada (antes um AddLine recusado
+        // fazia o item seguinte sobrescrever o anterior).
+        If oModelCNB:Length() >= nI
+            oModelCNB:GoLine(nI)
+        ElseIf !ZcnAddLn(oModel, oModelCNB, aFalhas, "item " + StrZero(nI, Len(CNB->CNB_ITEM)))
+            Exit
+        EndIf
+        ZcnItmGrv(oModel, aFalhas, oItm, StrZero(nI, Len(CNB->CNB_ITEM)))
+        If Len(aFalhas) > 0
+            Exit
+        EndIf
+    Next nI
+
+Return Nil
+
+/*/{Protheus.doc} ZcnTpRvCod
+Resolve o tipo de revisao para o par (codigo CN0_CODIGO, especie CN0_TIPO). Aceita tanto um
+codigo ja cadastrado em CN0 (ex.: "001") quanto uma especie (ex.: "G" = Revisao Aberta) -- no
+segundo caso usa o primeiro codigo de CN0 dessa especie.
+@type Static Function
+@param cTpRev caractere, codigo CN0 ou especie
+@param cEspecie caractere, por referencia -- recebe a especie (CN0_TIPO) para A300STpRev
+@return caractere, CN0_CODIGO para CN9_TIPREV (vazio se nao encontrado)
+/*/
+//=============================================================================================================================
+Static Function ZcnTpRvCod(cTpRev, cEspecie)
+
+    Local cCodigo := ""
+    Local cAliasQ := ""
+
+    cEspecie := cTpRev
+
+    CN0->(dbSetOrder(1)) // CN0_FILIAL+CN0_CODIGO
+    If Len(cTpRev) > 1 .And. CN0->(dbSeek(xFilial("CN0") + Padr(cTpRev, Len(CN0->CN0_CODIGO))))
+        cCodigo  := CN0->CN0_CODIGO
+        cEspecie := AllTrim(CN0->CN0_TIPO)
+        Return cCodigo
+    EndIf
+
+    cAliasQ := GetNextAlias()
+    BeginSql Alias cAliasQ
+        SELECT MIN(CN0.CN0_CODIGO) AS CODIGO
+          FROM %table:CN0% CN0
+         WHERE CN0.%notDel%
+           AND CN0.CN0_FILIAL = %xfilial:CN0%
+           AND CN0.CN0_TIPO = %exp:cTpRev%
+    EndSql
+    If !(cAliasQ)->(Eof())
+        cCodigo := AllTrim((cAliasQ)->CODIGO)
+    EndIf
+    (cAliasQ)->(dbCloseArea())
+
+Return cCodigo
+
+/*/{Protheus.doc} ZcnRvSet
+Grava um campo do cabecalho (CN9MASTER) na revisao SO se o valor mudou em relacao ao que o
+modelo ja carregou da revisao base -- evita disparar gatilho/validacao de campo que o usuario
+nem tocou (alguns ficam bloqueados conforme o tipo de revisao). Usa ZcnTrySet, entao uma
+recusa do framework vira mensagem em aFalhas.
+@type Static Function
+@param oModel objeto, modelo da revisao ja ativo
+@param aFalhas array, acumulador de falhas
+@param cCampo caractere, campo de CN9MASTER
+@param xNovo generico, valor novo
+@return Nil
+/*/
+//=============================================================================================================================
+Static Function ZcnRvSet(oModel, aFalhas, cCampo, xNovo)
+
+    Local xAtual := oModel:GetValue('CN9MASTER', cCampo)
+
+    If ValType(xAtual) == "C" .And. ValType(xNovo) == "C"
+        If AllTrim(xAtual) == AllTrim(xNovo)
+            Return Nil
+        EndIf
+    ElseIf ValType(xAtual) == ValType(xNovo) .And. xAtual == xNovo
+        Return Nil
+    EndIf
+
+    ZcnTrySet(oModel, aFalhas, 'CN9MASTER', cCampo, xNovo)
+
+Return Nil
+
+/*/{Protheus.doc} ZcnRvDlCrg
+Exclui (DeleteLine) todas as parcelas do cronograma financeiro (CNFDETAIL) de UMA planilha ja
+existente, dentro do modelo da revisao -- a planilha e os itens continuam intocados. Parcela
+que o framework nao deixar excluir (ex.: ja medida) vira mensagem em aFalhas. Mesmo ErrorBlock
+de ZcnTrySet, pra erro de runtime do MVC nao virar THREAD ERROR.
+@type Static Function
+@param oModel objeto, modelo da revisao ja ativo
+@param aFalhas array, acumulador de falhas
+@param cNumPla caractere, CNA_NUMERO da planilha
+@return Nil
+/*/
+//=============================================================================================================================
+Static Function ZcnRvDlCrg(oModel, aFalhas, cNumPla)
+
+    Local bPrevErr := ErrorBlock({|e| Break(e)})
+    Local oErr     := Nil
+    Local oMdlCNA  := Nil
+    Local oMdlCNF  := Nil
+    Local lAchou   := .F.
+    Local nL       := 0
+
+    Begin Sequence
+        oMdlCNA := oModel:GetModel('CNADETAIL')
+        For nL := 1 To oMdlCNA:Length()
+            oMdlCNA:GoLine(nL)
+            If Val(oMdlCNA:GetValue('CNA_NUMERO')) == Val(cNumPla)
+                lAchou := .T.
+                Exit
+            EndIf
+        Next nL
+
+        If !lAchou
+            AAdd(aFalhas, "Planilha [" + cNumPla + "] nao encontrada na revisao.")
+        Else
+            oMdlCNF := oModel:GetModel('CNFDETAIL')
+            If oMdlCNF == Nil
+                AAdd(aFalhas, "Submodelo do cronograma financeiro (CNFDETAIL) nao localizado no modelo do contrato.")
+            ElseIf !oMdlCNF:IsEmpty()
+                For nL := 1 To oMdlCNF:Length()
+                    oMdlCNF:GoLine(nL)
+                    If !oMdlCNF:IsDeleted() .And. !oMdlCNF:DeleteLine()
+                        AAdd(aFalhas, "Planilha [" + cNumPla + "], parcela " + AllTrim(cValToChar(nL)) + ": " + ZcnErrMsg(oModel))
+                        Exit
+                    EndIf
+                Next nL
+            EndIf
+            // Sem cronograma: limpa o numero do cronograma da planilha (CNA_CRONOG) -- senao o
+            // CN300PrCF recusa gerar outro ("Esta planilha ja possui um cronograma financeiro
+            // associado", 2026-10-09).
+            If Len(aFalhas) == 0 .And. !Empty(ZcnCpo({"CNA_CRONOG"}))
+                oModel:LoadValue('CNADETAIL', 'CNA_CRONOG', Space(TamSX3("CNA_CRONOG")[1]))
+            EndIf
+        EndIf
+    Recover Using oErr
+        AAdd(aFalhas, "Planilha [" + cNumPla + "]: " + AllTrim(oErr:Description))
+    End Sequence
+
+    ErrorBlock(bPrevErr)
+
+Return Nil
+
+/*/{Protheus.doc} ZcnPosPla
+Posiciona a CNADETAIL do modelo na planilha informada (linha nao excluida).
+@type Static Function
+@param oModel objeto, modelo CNTA300/CNTA301 ativo
+@param cNumPla caractere, numero da planilha (CNA_NUMERO)
+@return logico, .T. se encontrou
+/*/
+//=============================================================================================================================
+Static Function ZcnPosPla(oModel, cNumPla)
+
+    Local oMdlCNA := oModel:GetModel('CNADETAIL')
+    Local nL      := 0
+
+    For nL := 1 To oMdlCNA:Length()
+        oMdlCNA:GoLine(nL)
+        If !oMdlCNA:IsDeleted() .And. Val(oMdlCNA:GetValue('CNA_NUMERO')) == Val(cNumPla)
+            Return .T.
+        EndIf
+    Next nL
+
+Return .F.
+
+/*/{Protheus.doc} ZcnCrgLst
+Parcelas do cronograma financeiro (CNF) de uma planilha -- exibidas no "Editar Parcela" da tela
+(pedido do usuario 2026-10-09: o cronograma ja gerado nao aparecia). Campos opcionais via ZcnCpo;
+qualquer erro de SQL devolve lista vazia.
+@type Static Function
+@param cContra caractere, numero do contrato
+@param cRevisa caractere, revisao
+@param cNumPla caractere, numero da planilha
+@return array, [{parcela, competencia, data, valor, saldo}]
+/*/
+//=============================================================================================================================
+Static Function ZcnCrgLst(cContra, cRevisa, cNumPla)
+
+    Local aParc   := {}
+    Local oParc   := Nil
+    Local cAliasQ := GetNextAlias()
+    Local cCpoDt  := ZcnCpo({"CNF_PRUMED", "CNF_DTVENC"})
+    Local cQuery  := ""
+    Local bPrev   := ErrorBlock({|e| Break(e)})
+
+    cQuery := "SELECT CNF_PARCEL AS PARCEL, CNF_COMPET AS COMPET, CNF_VLPREV AS VLPREV, CNF_SALDO AS SALDO" + ;
+              IIf(Empty(cCpoDt), "", ", " + cCpoDt + " AS DTPREV") + ;
+              " FROM " + RetSqlName("CNF") + ;
+              " WHERE D_E_L_E_T_ = ' ' AND CNF_FILIAL = '" + xFilial("CNF") + "'" + ;
+              " AND CNF_CONTRA = '" + Padr(cContra, TamSX3("CNF_CONTRA")[1]) + "'" + ;
+              " AND CNF_REVISA = '" + Padr(cRevisa, TamSX3("CNF_REVISA")[1]) + "'" + ;
+              " AND CNF_NUMPLA = '" + Padr(cNumPla, TamSX3("CNF_NUMPLA")[1]) + "'" + ;
+              " ORDER BY CNF_PARCEL"
+
+    Begin Sequence
+        DbUseArea(.T., "TOPCONN", TcGenQry(,, cQuery), cAliasQ, .F., .T.)
+        While (cAliasQ)->(!Eof())
+            oParc := JsonObject():New()
+            oParc["parcela"]     := Val(cValToChar((cAliasQ)->PARCEL))
+            oParc["competencia"] := AllTrim((cAliasQ)->COMPET)
+            oParc["data"]        := IIf(Empty(cCpoDt), "", ZcnDateStr((cAliasQ)->DTPREV))
+            oParc["valor"]       := (cAliasQ)->VLPREV
+            oParc["saldo"]       := (cAliasQ)->SALDO
+            AAdd(aParc, oParc)
+            (cAliasQ)->(DbSkip())
+        EndDo
+        (cAliasQ)->(DbCloseArea())
+    Recover
+        aParc := {}
+        If Select(cAliasQ) > 0
+            (cAliasQ)->(DbCloseArea())
+        EndIf
+    End Sequence
+
+    ErrorBlock(bPrev)
+
+Return aParc
+
+/*/{Protheus.doc} ZcnCrgExc
+Exclui o cronograma financeiro de uma planilha ja gravada (operacao "cronogramaExcluir", pedido do
+usuario 2026-10-09) -- contrato em elaboracao, ou planilha incluida na revisao em aberto; nunca
+planilha com medicao. Se o tipo da planilha exigir cronograma, o proprio CNTA300 recusa na
+validacao (A300NCRON) e a mensagem volta para a tela -- nesse caso use "Substituir cronograma".
+@type Static Function
+@param oReq JsonObject, {numero, revisao, numPla}
+@return JsonObject, ver ZcnMont (ou {success:.F., message})
+/*/
+//=============================================================================================================================
+Static Function ZcnCrgExc(oReq)
+
+    Local oResp    := JsonObject():New()
+    Local oModel   := Nil
+    Local cNumero  := ""
+    Local cRevisao := ""
+    Local cNumPla  := ""
+    Local cMsg     := ""
+    Local aFalhas  := {}
+    Local bPrevErr := Nil
+    Local oErr     := Nil
+
+    If ValType(oReq["numero"]) == "C" ; cNumero  := AllTrim(oReq["numero"])  ; EndIf
+    If ValType(oReq["revisao"]) == "C" ; cRevisao := AllTrim(oReq["revisao"]) ; EndIf
+    If ValType(oReq["numPla"]) == "C" ; cNumPla  := AllTrim(oReq["numPla"])  ; EndIf
+
+    CN9->(dbSetOrder(1))
+    If Empty(cNumero) .Or. Empty(cNumPla) .Or. ;
+       !CN9->(dbSeek(xFilial("CN9") + Padr(cNumero, TamSX3("CN9_NUMERO")[1]) + Padr(cRevisao, TamSX3("CN9_REVISA")[1])))
+        oResp["success"] := .F.
+        oResp["message"] := "Contrato/planilha nao encontrado (" + cNumero + "/" + cRevisao + ", planilha " + cNumPla + ")."
+        Return oResp
+    EndIf
+    If !(AllTrim(CN9->CN9_SITUAC) == "02" .Or. (AllTrim(CN9->CN9_SITUAC) $ "09/A" .And. ZcnPlaNaRev(cNumero, cRevisao, cNumPla) .And. ;
+         ZcnTemRevAnt(cNumero, cRevisao) .And. AllTrim(cRevisao) == ZcnUltRev(cNumero)))
+        oResp["success"] := .F.
+        oResp["message"] := "O cronograma so pode ser excluido com o contrato em elaboracao ou em planilha incluida na revisao em aberto."
+        Return oResp
+    EndIf
+    If ZcnPlaMed(cNumero, cRevisao, cNumPla)
+        oResp["success"] := .F.
+        oResp["message"] := "A planilha " + cNumPla + " ja possui medicao -- o cronograma nao pode ser excluido."
+        Return oResp
+    EndIf
+
+    bPrevErr := ErrorBlock({|e| Break(e)})
+    Begin Sequence
+        oModel := FWLoadModel(IIf(AllTrim(CN9->CN9_ESPCTR) == "1", "CNTA300", "CNTA301"))
+        oModel:SetOperation(MODEL_OPERATION_UPDATE)
+        If !oModel:Activate()
+            oResp["success"] := .F.
+            oResp["message"] := "Nao foi possivel abrir o contrato para alteracao. " + ZcnErrMsg(oModel)
+        ElseIf !ZcnPosPla(oModel, cNumPla)
+            oModel:DeActivate()
+            oResp["success"] := .F.
+            oResp["message"] := "Planilha [" + cNumPla + "] nao encontrada no contrato."
+        Else
+            ZcnRvDlCrg(oModel, aFalhas, cNumPla)
+            If Len(aFalhas) > 0
+                oModel:DeActivate()
+                oResp["success"] := .F.
+                oResp["message"] := "Falha ao excluir o cronograma: " + aFalhas[1]
+            ElseIf oModel:VldData()
+                oModel:CommitData()
+                oModel:DeActivate()
+                oResp := ZcnMont(cNumero, cRevisao)
+                ZcnZlgPut(cNumero, cRevisao, "CRONOGRAMA_EXCLUIDO", "", "", "Cronograma financeiro da planilha " + cNumPla + " excluido")
+            Else
+                cMsg := ZcnErrMsg(oModel)
+                oModel:DeActivate()
+                oResp["success"] := .F.
+                oResp["message"] := IIf(Empty(cMsg), "Falha na validacao do contrato.", cMsg)
+            EndIf
+        EndIf
+    Recover Using oErr
+        oResp := JsonObject():New()
+        oResp["success"] := .F.
+        oResp["message"] := "Erro interno ao excluir o cronograma" + IIf(ValType(oErr) == "O", ": " + AllTrim(oErr:Description), "")
+    End Sequence
+    ErrorBlock(bPrevErr)
+
+Return oResp
+
+/*/{Protheus.doc} ZcnRvCrg
+Gera o cronograma financeiro/fisico da planilha POSICIONADA na CNADETAIL do modelo da revisao
+-- mesmo mecanismo de ZcnGrCrg (Pergunte "CN300CRG" + CN300PrCF), mas sem ativar/commitar um
+modelo proprio: roda dentro do modelo da revisao, que e gravado de uma vez so no fim de
+ZcnRevAb.
+@type Static Function
+@param oModel objeto, modelo da revisao ja ativo, CNADETAIL posicionada na planilha nova
+@param aFalhas array, acumulador de falhas
+@param oCrg JsonObject, {periodicidade, dias, ultimoDiaMes, competenciaInicio, dataPrevista, qtdParcelas, condPagto, taxaJuros}
+@return Nil
+/*/
+//=============================================================================================================================
+Static Function ZcnRvCrg(oModel, aFalhas, oCrg)
+
+    Local bPrevErr := ErrorBlock({|e| Break(e)})
+    Local oErr     := Nil
+    Local oMdlCNF  := Nil
+    Local nQtdCrg  := 0
+    Local nL       := 0
+
+    Begin Sequence
+        FWModelActive(oModel)
+
+        SetMVValue("CN300CRG", "MV_PAR01", oCrg["periodicidade"])
+        SetMVValue("CN300CRG", "MV_PAR02", oCrg["dias"])
+        SetMVValue("CN300CRG", "MV_PAR03", oCrg["ultimoDiaMes"])
+        SetMVValue("CN300CRG", "MV_PAR04", AllTrim(cValToChar(oCrg["competenciaInicio"])))
+        SetMVValue("CN300CRG", "MV_PAR05", ZcnSToD(oCrg["dataPrevista"]))
+        SetMVValue("CN300CRG", "MV_PAR06", oCrg["qtdParcelas"])
+        SetMVValue("CN300CRG", "MV_PAR07", AllTrim(cValToChar(oCrg["condPagto"])))
+        SetMVValue("CN300CRG", "MV_PAR08", oCrg["taxaJuros"])
+        Pergunte("CN300CRG", .F.)
+
+        CN300PrCF(.T.)
+
+        // Confere se o CN300PrCF gerou as parcelas (CNFDETAIL da planilha posicionada). Se nao
+        // gerou, para AQUI com mensagem clara: seguir ate o VldData fazia o proprio CNTA300 abrir
+        // a tela de parametros do cronograma e, no Cancelar, recusar com A300NCRON (2026-10-09).
+        oMdlCNF := oModel:GetModel('CNFDETAIL')
+        If oMdlCNF != Nil
+            For nL := 1 To oMdlCNF:Length()
+                oMdlCNF:GoLine(nL)
+                If !oMdlCNF:IsDeleted() .And. !Empty(oMdlCNF:GetValue('CNF_COMPET'))
+                    nQtdCrg++
+                EndIf
+            Next nL
+            If nQtdCrg == 0
+                AAdd(aFalhas, "o Protheus nao gerou nenhuma parcela do cronograma com os parametros informados " + ;
+                    "(competencia de inicio " + AllTrim(cValToChar(oCrg["competenciaInicio"])) + ", 1a competencia " + ;
+                    DToC(ZcnSToD(oCrg["dataPrevista"])) + ")." + IIf(Empty(ZcnErrMsg(oModel)), "", " " + ZcnErrMsg(oModel)))
+            EndIf
+        EndIf
+    Recover Using oErr
+        AAdd(aFalhas, AllTrim(oErr:Description))
+    End Sequence
+
+    ErrorBlock(bPrevErr)
+
+Return Nil
 
 /*/{Protheus.doc} ZcnAprov
 Aprova a revisao posicionada (operacao "revisaoAprovar") -- wrapper de
@@ -1852,9 +3569,12 @@ Static Function ZcnGrCrg(oReq)
     Local nTamNum             := 0
     Local nTamRev              := 0
     Local oErrCatch             := Nil
+    Local cNumPla               := ""
+    Local aFalhas               := {}
 
     If ValType(oReq["numero"]) == "C" ; cNumero  := AllTrim(oReq["numero"])  ; EndIf
     If ValType(oReq["revisao"]) == "C" ; cRevisao := AllTrim(oReq["revisao"]) ; EndIf
+    If ValType(oReq["numPla"]) == "C" ; cNumPla := AllTrim(oReq["numPla"]) ; EndIf
 
     If Empty(cNumero)
         oResp["success"] := .F.
@@ -1886,7 +3606,35 @@ Static Function ZcnGrCrg(oReq)
 
     oModel := FWLoadModel(cModelId)
     oModel:SetOperation(MODEL_OPERATION_UPDATE)
-    oModel:Activate()
+    // Confere o Activate -- seguir com o modelo inativo estoura THREAD ERROR no 1o SetValue
+    // (mesmo caso de ZcnRevAb, 2026-10-09).
+    If !oModel:Activate()
+        cMsg := ZcnErrMsg(oModel)
+        oResp["success"] := .F.
+        oResp["message"] := "Nao foi possivel abrir o contrato " + cNumero + "/" + cRevisao + " para alteracao." + IIf(Empty(cMsg), "", " " + cMsg)
+        Return oResp
+    EndIf
+
+    // Planilha alvo (2026-10-09): antes o CN300PrCF rodava na linha que estivesse posicionada na
+    // CNADETAIL (a 1a) -- com mais de uma planilha o cronograma ia para a planilha errada.
+    // "substituir": exclui o cronograma atual da planilha antes de gerar o novo, no mesmo commit.
+    If !Empty(cNumPla)
+        If !ZcnPosPla(oModel, cNumPla)
+            oModel:DeActivate()
+            oResp["success"] := .F.
+            oResp["message"] := "Planilha [" + cNumPla + "] nao encontrada no contrato."
+            Return oResp
+        EndIf
+        If ValType(oReq["substituir"]) == "L" .And. oReq["substituir"]
+            ZcnRvDlCrg(oModel, aFalhas, cNumPla)
+            If Len(aFalhas) > 0
+                oModel:DeActivate()
+                oResp["success"] := .F.
+                oResp["message"] := "Falha ao excluir o cronograma atual: " + aFalhas[1]
+                Return oResp
+            EndIf
+        EndIf
+    EndIf
 
     SetMVValue("CN300CRG", "MV_PAR01", oReq["periodicidade"])
     SetMVValue("CN300CRG", "MV_PAR02", oReq["dias"])
@@ -1920,6 +3668,1022 @@ Static Function ZcnGrCrg(oReq)
 
 Return oResp
 
+/*/{Protheus.doc} ZcnAnChave
+Monta a chave AC9_CODENT usada para vincular o contrato (CN9) ao Banco de
+Conhecimento nativo -- CN9_FILIAL+CN9_NUMERO, conforme documentacao oficial
+TOTVS repassada pelo usuario 2026-09-23 (AC9_ENTIDA="CN9", AC9_FILENT=filial
+do contrato, AC9_CODENT=concatenacao das chaves do registro de origem).
+@type Static Function
+@param cNumero caractere, numero do contrato
+@return caractere, chave AC9_CODENT
+/*/
+//=============================================================================================================================
+Static Function ZcnAnChave(cNumero)
+Return xFilial("CN9") + Padr(AllTrim(cNumero), TamSX3("CN9_NUMERO")[1])
+
+/*/{Protheus.doc} ZcnAnDir
+Diretorio fisico onde os arquivos do Banco de Conhecimento (ACB) sao
+gravados neste ambiente -- MV_DIRDOC + "CO"+empresa+"\"+filial+"\", conforme
+documentacao oficial TOTVS repassada pelo usuario 2026-09-23. NAO reproduz a
+logica nativa de deteccao de tabela compartilhada (pasta "Shared" quando
+AC9/ACB/ACC estao configuradas como unicas/sem filial no SX2) -- sem uma
+forma confirmada de checar isso por codigo, sempre usa a pasta POR FILIAL.
+Isso e seguro para o proprio ciclo desta funcionalidade (grava e le sempre
+do mesmo lugar), mas pode nao ser exatamente a mesma pasta que o Wizard
+nativo ("Outras Acoes > Conhecimento") usaria se este ambiente rodar AC9/
+ACB em modo compartilhado -- nesse caso, um anexo incluido por aqui pode nao
+aparecer no Wizard nativo (e vice-versa) ate isso ser confirmado/ajustado.
+@type Static Function
+@return caractere, caminho do diretorio (com "\" no final)
+/*/
+//=============================================================================================================================
+Static Function ZcnAnDir()
+
+    Local cDirDoc := AllTrim(GetMv("MV_DIRDOC", .F., ""))
+
+    If Empty(cDirDoc)
+        cDirDoc := "\protheus_data\dirdoc\"
+    EndIf
+    If Right(cDirDoc, 1) != "\"
+        cDirDoc += "\"
+    EndIf
+
+Return cDirDoc + "CO" + cEmpAnt + "\" + xFilial("ACB") + "\"
+
+/*/{Protheus.doc} ZcnAnLst
+Lista os anexos de um contrato (operacao "anexoListar") -- consulta o Banco
+de Conhecimento nativo (AC9 vinculado a ACB), nao uma tabela propria. Join
+por ACB_CODOBJ SOMENTE (sem casar ACB_FILIAL) porque ACB costuma ser uma
+tabela compartilhada entre filiais (mesma cautela ja registrada em memoria
+deste projeto sobre JOIN cross-filial silenciosamente vazio quando uma das
+tabelas e compartilhada).
+@type Static Function
+@param oReq JsonObject, {numero}
+@return JsonObject, {success, anexos:[{item,nome,tamanho}]}
+/*/
+//=============================================================================================================================
+Static Function ZcnAnLst(oReq)
+
+    Local oResp    := JsonObject():New()
+    Local aAnexos  := {}
+    Local oLinha   := Nil
+    Local cNumero  := ""
+    Local cChave   := ""
+    Local cAliasQ  := ""
+    Local cDir     := ""
+    Local nHandle  := 0
+
+    If ValType(oReq["numero"]) == "C" ; cNumero := AllTrim(oReq["numero"]) ; EndIf
+
+    If Empty(cNumero)
+        oResp["success"] := .F.
+        oResp["message"] := "Numero do contrato nao informado"
+        Return oResp
+    EndIf
+
+    cChave := ZcnAnChave(cNumero)
+    cDir   := ZcnAnDir()
+
+    cAliasQ := GetNextAlias()
+    BeginSql Alias cAliasQ
+        SELECT ACB.ACB_CODOBJ, ACB.ACB_OBJETO, ACB.ACB_DESCRI
+          FROM %table:AC9% AC9
+          INNER JOIN %table:ACB% ACB ON ACB.ACB_CODOBJ = AC9.AC9_CODOBJ AND ACB.%notDel%
+         WHERE AC9.%notDel%
+           AND AC9.AC9_FILIAL = %xfilial:AC9%
+           AND AC9.AC9_ENTIDA = 'CN9'
+           AND AC9.AC9_FILENT = %xfilial:CN9%
+           AND AC9.AC9_CODENT = %exp:cChave%
+         ORDER BY ACB.ACB_CODOBJ
+    EndSql
+    While (cAliasQ)->(!Eof())
+        oLinha := JsonObject():New()
+        oLinha["item"]    := AllTrim((cAliasQ)->ACB_CODOBJ)
+        oLinha["nome"]    := AllTrim((cAliasQ)->ACB_DESCRI)
+        // Tamanho lido do proprio arquivo em disco (nao existe campo confirmado de tamanho na
+        // ACB) -- degrada pra 0 se o arquivo nao for encontrado, sem quebrar a listagem.
+        oLinha["tamanho"] := 0
+        nHandle := fOpen(cDir + AllTrim((cAliasQ)->ACB_OBJETO), 0)
+        If nHandle != -1
+            oLinha["tamanho"] := fSeek(nHandle, 0, 2)
+            fClose(nHandle)
+        EndIf
+        aAdd(aAnexos, oLinha)
+        (cAliasQ)->(DbSkip())
+    EndDo
+    (cAliasQ)->(DbCloseArea())
+
+    oResp["success"] := .T.
+    oResp["anexos"]  := aAnexos
+
+Return oResp
+
+/*/{Protheus.doc} ZcnAnCri
+Anexa um arquivo ao contrato (operacao "anexoCriar") usando o Banco de
+Conhecimento NATIVO do Protheus (AC9+ACB), conforme documentacao oficial
+TOTVS repassada pelo usuario 2026-09-23 -- substitui a 1a versao desta
+funcao (que usava uma tabela ZCN propria, criada so por seguranca enquanto
+a estrutura real da AC9/ACB nao estava confirmada).
+Grava o arquivo fisico em ZcnAnDir() (MV_DIRDOC) e os metadados em:
+  ACB_CODOBJ (numerador GetSxeNum, chave unica) / ACB_OBJETO (nome do
+  arquivo em disco, <codigo>+extensao) / ACB_DESCRI (nome original)
+  AC9_CODOBJ (= ACB_CODOBJ) / AC9_ENTIDA ("CN9") / AC9_FILENT (filial do
+  contrato) / AC9_CODENT (ZcnAnChave -- CN9_FILIAL+CN9_NUMERO)
+Campos "principais" confirmados pelo usuario -- outros campos que a AC9/ACB
+exijam neste ambiente especifico (nao confirmados) podem fazer o RecLock
+falhar; o Begin Sequence abaixo converte isso num erro comum em vez de
+THREAD ERROR, e desfaz a reserva do numerador (RollBackSX8) se algo falhar
+no meio do caminho.
+Sem checagem de assinatura de conteudo -- aceita qualquer tipo comum de
+documento, mas BLOQUEIA extensoes executaveis/script (medida minima de
+seguranca, upload irrestrito de arquivo e um risco conhecido).
+@type Static Function
+@param oReq JsonObject, {numero, nome, conteudoBase64}
+@return JsonObject, {success, item, message}
+/*/
+//=============================================================================================================================
+Static Function ZcnAnCri(oReq)
+
+    Local oResp       := JsonObject():New()
+    Local oErrCatch    := Nil
+    Local cNumero       := ""
+    Local cNomeArq        := ""
+    Local cBase64           := ""
+    Local cBinario            := ""
+    Local cCodObj              := ""
+    Local cDir                   := ""
+    Local cArqDisco                := ""
+    Local cCaminho                   := ""
+    Local cExt                         := ""
+    Local nHandle                        := 0
+    Local nPosBase64                       := 0
+    Local lReservou                          := .F.
+    Local aExtBloq := {".EXE", ".BAT", ".CMD", ".COM", ".PS1", ".VBS", ".JS", ".SH", ".DLL", ".SCR", ".MSI", ".JAR", ".APP"}
+
+    If ValType(oReq["numero"]) == "C" ; cNumero := AllTrim(oReq["numero"]) ; EndIf
+
+    If Empty(cNumero)
+        oResp["success"] := .F.
+        oResp["message"] := "Numero do contrato nao informado"
+        Return oResp
+    EndIf
+
+    CN9->(dbSetOrder(1))
+    If !CN9->(dbSeek(xFilial("CN9") + Padr(cNumero, TamSX3("CN9_NUMERO")[1])))
+        oResp["success"] := .F.
+        oResp["message"] := "Contrato [" + cNumero + "] nao encontrado."
+        Return oResp
+    EndIf
+
+    cNomeArq := AllTrim(cValToChar(oReq["nome"]))
+    cBase64  := oReq["conteudoBase64"]
+
+    If Empty(cNomeArq) .Or. Empty(cBase64)
+        oResp["success"] := .F.
+        oResp["message"] := "Informe 'nome' e 'conteudoBase64' do arquivo"
+        Return oResp
+    EndIf
+
+    cExt := Upper(cNomeArq)
+    cExt := SubStr(cExt, RAt(".", cExt))
+    If AScan(aExtBloq, cExt) > 0
+        oResp["success"] := .F.
+        oResp["message"] := "Tipo de arquivo nao permitido (" + cExt + ")"
+        Return oResp
+    EndIf
+
+    nPosBase64 := At("base64,", cBase64)
+    If nPosBase64 > 0
+        cBase64 := SubStr(cBase64, nPosBase64 + Len("base64,"))
+    EndIf
+
+    cBinario := Decode64(cBase64)
+    If Empty(cBinario)
+        oResp["success"] := .F.
+        oResp["message"] := "Conteudo Base64 invalido ou arquivo vazio"
+        Return oResp
+    EndIf
+
+    // Begin Sequence/Recover -- mesmo motivo do resto do arquivo: gravar em AC9/ACB e uma area
+    // nova/nao testada nesta sessao, qualquer erro de runtime (campo obrigatorio que eu nao
+    // conheca, etc.) vira JSON de erro em vez de THREAD ERROR, e desfaz a reserva do numerador.
+    Begin Sequence
+
+    cCodObj := GetSxeNum("ACB", "ACB_CODOBJ")
+    lReservou := .T.
+
+    cDir := ZcnAnDir()
+    If !ExistDir(cDir)
+        MakeDir(cDir) // ignora retorno -- se ja existir por corrida concorrente, fCreate abaixo ainda funciona
+    EndIf
+
+    cArqDisco := AllTrim(cCodObj) + Lower(cExt)
+    cCaminho  := cDir + cArqDisco
+
+    nHandle := fCreate(cCaminho)
+    If nHandle == -1
+        RollBackSX8()
+        oResp["success"] := .F.
+        oResp["message"] := "Falha ao criar o arquivo no servidor (" + cCaminho + ")"
+        Return oResp
+    EndIf
+
+    If fWrite(nHandle, cBinario, Len(cBinario)) != Len(cBinario)
+        fClose(nHandle)
+        FErase(cCaminho)
+        RollBackSX8()
+        oResp["success"] := .F.
+        oResp["message"] := "Falha ao gravar todo o conteudo do arquivo"
+        Return oResp
+    EndIf
+    fClose(nHandle)
+
+    DbSelectArea("ACB")
+    RecLock("ACB", .T.)
+        ACB->ACB_FILIAL := xFilial("ACB")
+        ACB->ACB_CODOBJ := cCodObj
+        ACB->ACB_OBJETO := cArqDisco
+        ACB->ACB_DESCRI := cNomeArq
+    MsUnlock()
+
+    DbSelectArea("AC9")
+    RecLock("AC9", .T.)
+        AC9->AC9_FILIAL := xFilial("AC9")
+        AC9->AC9_CODOBJ := cCodObj
+        AC9->AC9_ENTIDA := "CN9"
+        AC9->AC9_FILENT := xFilial("CN9")
+        AC9->AC9_CODENT := ZcnAnChave(cNumero)
+    MsUnlock()
+
+    ConfirmSX8()
+    lReservou := .F.
+
+    oResp["success"] := .T.
+    oResp["item"]    := AllTrim(cCodObj)
+    oResp["message"] := "Anexo incluido com sucesso"
+
+    Recover Using oErrCatch
+        If lReservou
+            RollBackSX8()
+        EndIf
+        oResp := JsonObject():New()
+        oResp["success"] := .F.
+        oResp["message"] := "Erro interno ao anexar arquivo: " + AllTrim(oErrCatch:description) +;
+            IIf(ValType(oErrCatch:operation) == "C" .And. !Empty(oErrCatch:operation), " (" + AllTrim(oErrCatch:operation) + ")", "")
+    End Sequence
+
+Return oResp
+
+/*/{Protheus.doc} ZcnAnBax
+Baixa um anexo do contrato (conteudo em base64, operacao "anexoBaixar") --
+le o registro AC9+ACB pelo codigo de objeto (item) e devolve o arquivo
+fisico gravado em ZcnAnDir().
+@type Static Function
+@param oReq JsonObject, {numero, item}
+@return JsonObject, {success, nome, conteudoBase64}
+/*/
+//=============================================================================================================================
+Static Function ZcnAnBax(oReq)
+
+    Local oResp    := JsonObject():New()
+    Local cNumero  := ""
+    Local cItem    := ""
+    Local cChave   := ""
+    Local cAliasQ  := ""
+    Local cCaminho := ""
+    Local cNomeArq := ""
+    Local nHandle  := 0
+    Local nTam     := 0
+    Local cBuffer  := ""
+
+    If ValType(oReq["numero"]) == "C" ; cNumero := AllTrim(oReq["numero"]) ; EndIf
+    If ValType(oReq["item"])   == "C" ; cItem   := AllTrim(oReq["item"])   ; EndIf
+
+    If Empty(cNumero) .Or. Empty(cItem)
+        oResp["success"] := .F.
+        oResp["message"] := "Parametros 'numero' e 'item' sao obrigatorios"
+        Return oResp
+    EndIf
+
+    cChave  := ZcnAnChave(cNumero)
+    cAliasQ := GetNextAlias()
+    BeginSql Alias cAliasQ
+        SELECT ACB.ACB_OBJETO, ACB.ACB_DESCRI
+          FROM %table:AC9% AC9
+          INNER JOIN %table:ACB% ACB ON ACB.ACB_CODOBJ = AC9.AC9_CODOBJ AND ACB.%notDel%
+         WHERE AC9.%notDel%
+           AND AC9.AC9_FILIAL = %xfilial:AC9%
+           AND AC9.AC9_ENTIDA = 'CN9'
+           AND AC9.AC9_FILENT = %xfilial:CN9%
+           AND AC9.AC9_CODENT = %exp:cChave%
+           AND AC9.AC9_CODOBJ = %exp:cItem%
+    EndSql
+    If (cAliasQ)->(Eof())
+        (cAliasQ)->(DbCloseArea())
+        oResp["success"] := .F.
+        oResp["message"] := "Anexo nao encontrado"
+        Return oResp
+    EndIf
+
+    cNomeArq := AllTrim((cAliasQ)->ACB_DESCRI)
+    cCaminho := ZcnAnDir() + AllTrim((cAliasQ)->ACB_OBJETO)
+    (cAliasQ)->(DbCloseArea())
+
+    nHandle := fOpen(cCaminho, 0)
+    If nHandle == -1
+        oResp["success"] := .F.
+        oResp["message"] := "Arquivo nao encontrado no servidor"
+        Return oResp
+    EndIf
+
+    nTam    := fSeek(nHandle, 0, 2)
+    fSeek(nHandle, 0, 0)
+    cBuffer := Space(nTam)
+    fRead(nHandle, @cBuffer, nTam)
+    fClose(nHandle)
+
+    oResp["success"]        := .T.
+    oResp["nome"]           := cNomeArq
+    oResp["conteudoBase64"] := Encode64(cBuffer)
+
+Return oResp
+
+/*/{Protheus.doc} ZcnAnRem
+Remove um anexo do contrato (registros AC9+ACB + arquivo em disco, operacao
+"anexoRemover"). Posiciona por RECNO (achado via SQL) em vez de DbSeek --
+nao ha confirmacao da ordem/indice real de AC9/ACB neste ambiente, RECNO
+funciona independente disso.
+@type Static Function
+@param oReq JsonObject, {numero, item}
+@return JsonObject, {success, message}
+/*/
+//=============================================================================================================================
+Static Function ZcnAnRem(oReq)
+
+    Local oResp     := JsonObject():New()
+    Local cNumero   := ""
+    Local cItem     := ""
+    Local cChave    := ""
+    Local cAliasQ   := ""
+    Local cCaminho  := ""
+    Local nRecnoAc9 := 0
+    Local nRecnoAcb := 0
+
+    If ValType(oReq["numero"]) == "C" ; cNumero := AllTrim(oReq["numero"]) ; EndIf
+    If ValType(oReq["item"])   == "C" ; cItem   := AllTrim(oReq["item"])   ; EndIf
+
+    If Empty(cNumero) .Or. Empty(cItem)
+        oResp["success"] := .F.
+        oResp["message"] := "Parametros 'numero' e 'item' sao obrigatorios"
+        Return oResp
+    EndIf
+
+    cChave  := ZcnAnChave(cNumero)
+    cAliasQ := GetNextAlias()
+    BeginSql Alias cAliasQ
+        SELECT AC9.R_E_C_N_O_ AS AC9RECNO, ACB.R_E_C_N_O_ AS ACBRECNO, ACB.ACB_OBJETO
+          FROM %table:AC9% AC9
+          INNER JOIN %table:ACB% ACB ON ACB.ACB_CODOBJ = AC9.AC9_CODOBJ AND ACB.%notDel%
+         WHERE AC9.%notDel%
+           AND AC9.AC9_FILIAL = %xfilial:AC9%
+           AND AC9.AC9_ENTIDA = 'CN9'
+           AND AC9.AC9_FILENT = %xfilial:CN9%
+           AND AC9.AC9_CODENT = %exp:cChave%
+           AND AC9.AC9_CODOBJ = %exp:cItem%
+    EndSql
+    If (cAliasQ)->(Eof())
+        (cAliasQ)->(DbCloseArea())
+        oResp["success"] := .F.
+        oResp["message"] := "Anexo nao encontrado"
+        Return oResp
+    EndIf
+
+    nRecnoAc9 := (cAliasQ)->AC9RECNO
+    nRecnoAcb := (cAliasQ)->ACBRECNO
+    cCaminho  := ZcnAnDir() + AllTrim((cAliasQ)->ACB_OBJETO)
+    (cAliasQ)->(DbCloseArea())
+
+    DbSelectArea("AC9")
+    AC9->(DbGoTo(nRecnoAc9))
+    RecLock("AC9", .F.)
+        AC9->(DbDelete())
+    MsUnlock()
+
+    DbSelectArea("ACB")
+    ACB->(DbGoTo(nRecnoAcb))
+    RecLock("ACB", .F.)
+        ACB->(DbDelete())
+    MsUnlock()
+
+    If !Empty(cCaminho) .And. File(cCaminho)
+        FErase(cCaminho)
+    EndIf
+
+    oResp["success"] := .T.
+    oResp["message"] := "Anexo removido com sucesso"
+
+Return oResp
+
+/*/{Protheus.doc} ZcnAcTot
+Codigo de "Acesso Total" do CNN_TRACOD -- procura no combo do dicionario (X3_CBOX) a opcao cujo
+texto contenha "TOTAL"; se o campo nao tiver combo, assume "001" (acesso total do padrao GCT).
+@type Static Function
+@return caractere, codigo do tipo de acesso total
+/*/
+//=============================================================================================================================
+Static Function ZcnAcTot()
+
+    Local aOpc := ZcnCbox("CNN_TRACOD")
+    Local nI   := 0
+
+    For nI := 1 To Len(aOpc)
+        If "TOTAL" $ Upper(aOpc[nI]["label"])
+            Return aOpc[nI]["value"]
+        EndIf
+    Next nI
+
+Return "001"
+
+/*/{Protheus.doc} ZcnAcQtd
+Conta registros de acesso (CNN) do contrato na filial corrente -- opcionalmente so de um
+usuario e/ou de um tipo de acesso (CNN_TRACOD).
+@type Static Function
+@param cContra caractere, numero do contrato
+@param cUsr caractere, codigo do usuario (vazio = todos)
+@param cTraCod caractere, tipo de acesso (vazio = todos)
+@return numerico, quantidade de registros
+/*/
+//=============================================================================================================================
+Static Function ZcnAcQtd(cContra, cUsr, cTraCod)
+
+    Local cAliasQ := GetNextAlias()
+    Local cCtr    := Padr(cContra, TamSX3("CNN_CONTRA")[1])
+    Local nQtd    := 0
+
+    BeginSql Alias cAliasQ
+        SELECT CNN.CNN_USRCOD, CNN.CNN_TRACOD
+          FROM %table:CNN% CNN
+         WHERE CNN.%notDel%
+           AND CNN.CNN_FILIAL = %xfilial:CNN%
+           AND CNN.CNN_CONTRA = %exp:cCtr%
+         ORDER BY CNN.CNN_USRCOD
+    EndSql
+    // Filtro de usuario/tipo aplicado aqui (poucas linhas por contrato) -- evita montar
+    // fragmento dinamico de WHERE dentro do BeginSql.
+    While (cAliasQ)->(!Eof())
+        If (Empty(cUsr) .Or. AllTrim((cAliasQ)->CNN_USRCOD) == AllTrim(cUsr)) .And.;
+           (Empty(cTraCod) .Or. AllTrim((cAliasQ)->CNN_TRACOD) == AllTrim(cTraCod))
+            nQtd++
+        EndIf
+        (cAliasQ)->(DbSkip())
+    EndDo
+    (cAliasQ)->(DbCloseArea())
+
+Return nQtd
+
+/*/{Protheus.doc} ZcnAcPode
+Indica se o usuario logado pode gerenciar os acessos (CNN) do contrato: administrador, quem
+ja tem acesso total ao contrato, ou qualquer usuario enquanto o contrato ainda nao tiver nenhum
+acesso cadastrado (contratos incluidos pela tela antes do acesso automatico ao criador -- sem
+isso ninguem conseguiria dar o 1o acesso).
+@type Static Function
+@param cContra caractere, numero do contrato
+@return logico
+/*/
+//=============================================================================================================================
+Static Function ZcnAcPode(cContra)
+
+    If FWIsAdmin(__cUserId)
+        Return .T.
+    EndIf
+
+Return ZcnAcQtd(cContra, "", "") == 0 .Or. ZcnAcQtd(cContra, __cUserId, ZcnAcTot()) > 0
+
+/*/{Protheus.doc} ZcnAcTem
+Indica se o usuario logado tem acesso (qualquer tipo de CNN_TRACOD) ao contrato na filial
+corrente -- pelo proprio codigo (CNN_USRCOD) ou por um grupo dele (CNN_GRPCOD, quando o campo
+existir no dicionario). Mesma regra do CNTA300/CNTA301 ("sem acesso ao contrato"). Usada em
+JsToAdvpl antes de abrir/alterar o contrato.
+@type Static Function
+@param cContra caractere, numero do contrato
+@return logico
+/*/
+//=============================================================================================================================
+Static Function ZcnAcTem(cContra)
+
+    Local cAliasQ := GetNextAlias()
+    Local cCtr    := Padr(cContra, TamSX3("CNN_CONTRA")[1])
+    Local aGrupos := UsrRetGrp(UsrRetName(__cUserId), __cUserId)
+    Local lGrp    := .F.
+    Local lTem    := .F.
+
+    If ValType(aGrupos) != "A" ; aGrupos := {} ; EndIf
+
+    DbSelectArea("CNN")
+    lGrp := CNN->(FieldPos("CNN_GRPCOD")) > 0
+
+    BeginSql Alias cAliasQ
+        SELECT CNN.R_E_C_N_O_ AS CNNRECNO
+          FROM %table:CNN% CNN
+         WHERE CNN.%notDel%
+           AND CNN.CNN_FILIAL = %xfilial:CNN%
+           AND CNN.CNN_CONTRA = %exp:cCtr%
+    EndSql
+
+    While (cAliasQ)->(!Eof()) .And. !lTem
+        CNN->(DbGoTo((cAliasQ)->CNNRECNO))
+        If !Empty(CNN->CNN_USRCOD) .And. AllTrim(CNN->CNN_USRCOD) == AllTrim(__cUserId)
+            lTem := .T.
+        ElseIf lGrp .And. !Empty(CNN->CNN_GRPCOD) .And. aScan(aGrupos, {|x| AllTrim(x) == AllTrim(CNN->CNN_GRPCOD)}) > 0
+            lTem := .T.
+        EndIf
+        (cAliasQ)->(DbSkip())
+    EndDo
+    (cAliasQ)->(DbCloseArea())
+
+Return lTem
+
+/*/{Protheus.doc} ZcnTemRevAnt
+Diz se o registro (numero+revisao) e uma REVISAO de fato, ou seja, se existe uma revisao anterior
+do mesmo contrato. A revisao original (a primeira gravada) devolve .F. -- trava usada para nunca
+gravar alteracao de revisao no contrato original (erro real de 2026-10-09: "Alterar Revisao"
+gravou a planilha nova na revisao original).
+@type Static Function
+@param cContra caractere, numero do contrato
+@param cRevisa caractere, revisao
+@return logico
+/*/
+//=============================================================================================================================
+Static Function ZcnTemRevAnt(cContra, cRevisa)
+
+    Local cAliasQ := GetNextAlias()
+    Local cCtr    := Padr(cContra, TamSX3("CN9_NUMERO")[1])
+    Local cRev    := Padr(cRevisa, TamSX3("CN9_REVISA")[1])
+    Local lTem    := .F.
+
+    BeginSql Alias cAliasQ
+        SELECT COUNT(*) AS QTD
+          FROM %table:CN9% CN9
+         WHERE CN9.%notDel%
+           AND CN9.CN9_FILIAL = %xfilial:CN9%
+           AND CN9.CN9_NUMERO = %exp:cCtr%
+           AND CN9.CN9_REVISA < %exp:cRev%
+    EndSql
+    lTem := (cAliasQ)->QTD > 0
+    (cAliasQ)->(DbCloseArea())
+
+Return lTem
+
+/*/{Protheus.doc} ZcnUltRev
+Maior CN9_REVISA do contrato (a revisao mais recente gravada -- o CN9_REVATU so passa a apontar
+para ela depois da aprovacao).
+@type Static Function
+@param cContra caractere, numero do contrato
+@return caractere, revisao ("" se o contrato so tem a revisao original)
+/*/
+//=============================================================================================================================
+Static Function ZcnUltRev(cContra)
+
+    Local cAliasQ := GetNextAlias()
+    Local cCtr    := Padr(cContra, TamSX3("CN9_NUMERO")[1])
+    Local cRev    := ""
+
+    BeginSql Alias cAliasQ
+        SELECT MAX(CN9.CN9_REVISA) AS REVISA
+          FROM %table:CN9% CN9
+         WHERE CN9.%notDel%
+           AND CN9.CN9_FILIAL = %xfilial:CN9%
+           AND CN9.CN9_NUMERO = %exp:cCtr%
+    EndSql
+    If (cAliasQ)->(!Eof())
+        cRev := AllTrim((cAliasQ)->REVISA)
+    EndIf
+    (cAliasQ)->(DbCloseArea())
+
+Return cRev
+
+/*/{Protheus.doc} ZcnRevAberta
+Revisao em aberto do contrato: a revisao mais recente (ZcnUltRev), desde que seja uma revisao de
+fato (ZcnTemRevAnt) e esteja com situacao "09" (Em Revisao) ou "A" (alcadas). Nunca devolve a
+revisao original.
+@type Static Function
+@param cContra caractere, numero do contrato
+@return caractere, revisao em aberto ou Nil se nao houver
+/*/
+//=============================================================================================================================
+Static Function ZcnRevAberta(cContra)
+
+    Local cRev := ZcnUltRev(cContra)
+    Local cSit := ""
+
+    // A revisao em aberto e SEMPRE a mais recente, e precisa ser uma revisao de fato (ter revisao
+    // anterior) -- nunca a original, mesmo que a original esteja marcada "Em Revisao".
+    If !ZcnTemRevAnt(cContra, cRev)
+        Return Nil
+    EndIf
+    cSit := AllTrim(Posicione("CN9", 1, xFilial("CN9") + Padr(cContra, TamSX3("CN9_NUMERO")[1]) + Padr(cRev, TamSX3("CN9_REVISA")[1]), "CN9_SITUAC"))
+    If !(cSit $ "09/A")
+        Return Nil
+    EndIf
+
+Return cRev
+
+/*/{Protheus.doc} ZcnPlaNaRev
+Diz se a planilha foi incluida NESTA revisao, ou seja, se nao existe na revisao anterior do
+contrato (a maior CN9_REVISA menor que a atual). Revisao sem anterior (a original) = .F.
+Usado para liberar a edicao so das planilhas novas de uma revisao em aberto.
+@type Static Function
+@param cContra caractere, numero do contrato
+@param cRevisa caractere, revisao atual
+@param cNumPla caractere, numero da planilha (CNA_NUMERO)
+@return logico
+/*/
+//=============================================================================================================================
+Static Function ZcnPlaNaRev(cContra, cRevisa, cNumPla)
+
+    Local cAliasQ := GetNextAlias()
+    Local cCtr    := Padr(cContra, TamSX3("CN9_NUMERO")[1])
+    Local cRev    := Padr(cRevisa, TamSX3("CN9_REVISA")[1])
+    Local cPla    := Padr(cNumPla, TamSX3("CNA_NUMERO")[1])
+    Local cRevAnt := ""
+    Local lNova   := .F.
+
+    BeginSql Alias cAliasQ
+        SELECT MAX(CN9.CN9_REVISA) AS REVANT, COUNT(*) AS QTD
+          FROM %table:CN9% CN9
+         WHERE CN9.%notDel%
+           AND CN9.CN9_FILIAL = %xfilial:CN9%
+           AND CN9.CN9_NUMERO = %exp:cCtr%
+           AND CN9.CN9_REVISA < %exp:cRev%
+    EndSql
+    If (cAliasQ)->(Eof()) .Or. (cAliasQ)->QTD == 0
+        (cAliasQ)->(DbCloseArea())
+        Return .F.
+    EndIf
+    cRevAnt := (cAliasQ)->REVANT
+    (cAliasQ)->(DbCloseArea())
+
+    BeginSql Alias cAliasQ
+        SELECT COUNT(*) AS QTD
+          FROM %table:CNA% CNA
+         WHERE CNA.%notDel%
+           AND CNA.CNA_FILIAL = %xfilial:CNA%
+           AND CNA.CNA_CONTRA = %exp:cCtr%
+           AND CNA.CNA_REVISA = %exp:cRevAnt%
+           AND CNA.CNA_NUMERO = %exp:cPla%
+    EndSql
+    lNova := (cAliasQ)->QTD == 0
+    (cAliasQ)->(DbCloseArea())
+
+Return lNova
+
+/*/{Protheus.doc} ZcnAcVer
+Operacao "acessoVerificar" -- chamada pela listagem ANTES de abrir o contrato. A checagem de
+acesso em si fica em JsToAdvpl (ZcnAcTem); se chegou aqui, o usuario tem acesso -- so confere
+se o contrato existe na filial (ja trocada para a do contrato em JsToAdvpl).
+@type Static Function
+@param cContra caractere, numero do contrato
+@return JsonObject, {success, message}
+/*/
+//=============================================================================================================================
+Static Function ZcnAcVer(cContra)
+
+    Local oResp := JsonObject():New()
+
+    CN9->(dbSetOrder(1))
+    If CN9->(dbSeek(xFilial("CN9") + Padr(cContra, Max(TamSX3("CN9_NUMERO")[1], Len(cContra)))))
+        oResp["success"] := .T.
+        // Revisao ja aberta (Em Revisao/Revisao em Alcadas): a listagem abre ESSA revisao para
+        // edicao em vez de tentar abrir outra (pedido do usuario 2026-10-09 -- a 2a tentativa dava
+        // CNTA300NOVIG "contrato nao se encontra vigente").
+        oResp["revisaoAberta"] := ZcnRevAberta(cContra)
+    Else
+        oResp["success"] := .F.
+        oResp["message"] := "Contrato [" + cContra + "] nao encontrado na filial " + AllTrim(cFilAnt) + "."
+    EndIf
+
+Return oResp
+
+/*/{Protheus.doc} ZcnAcGrv
+Grava um acesso (CNN) do usuario ao contrato, na filial corrente -- nao duplica se o usuario
+ja tiver esse mesmo tipo de acesso.
+@type Static Function
+@param cContra caractere, numero do contrato
+@param cUsr caractere, codigo do usuario
+@param cTraCod caractere, tipo de acesso (CNN_TRACOD)
+@return logico, .T. se gravou (ou ja existia)
+/*/
+//=============================================================================================================================
+Static Function ZcnAcGrv(cContra, cUsr, cTraCod)
+
+    If ZcnAcQtd(cContra, cUsr, cTraCod) > 0
+        Return .T.
+    EndIf
+
+    DbSelectArea("CNN")
+    RecLock("CNN", .T.)
+        CNN->CNN_FILIAL := xFilial("CNN")
+        CNN->CNN_CONTRA := cContra
+        CNN->CNN_USRCOD := cUsr
+        CNN->CNN_TRACOD := cTraCod
+    MsUnlock()
+
+Return .T.
+
+/*/{Protheus.doc} ZcnAcFil
+Troca cFilAnt para a filial do contrato (a listagem mostra contratos de varias filiais) e
+devolve a filial anterior para o chamador restaurar -- mesmo tratamento de ZcnImpExp.
+@type Static Function
+@param oReq JsonObject, {filial}
+@return caractere, filial anterior (cFilAnt antes da troca)
+/*/
+//=============================================================================================================================
+Static Function ZcnAcFil(oReq)
+
+    Local cFilBkp := cFilAnt
+
+    If ValType(oReq["filial"]) == "C" .And. !Empty(AllTrim(oReq["filial"]))
+        cFilAnt := Padr(AllTrim(oReq["filial"]), Len(cFilAnt))
+    EndIf
+
+Return cFilBkp
+
+/*/{Protheus.doc} ZcnAcLst
+Lista os usuarios/grupos com acesso ao contrato (tabela CNN, operacao "acessoListar") -- e a
+mesma tabela que o CNTA300/CNTA301 consulta antes de abrir o contrato ("sem acesso ao
+contrato"). Devolve tambem os tipos de acesso (combo do CNN_TRACOD) e se o usuario logado pode
+incluir/remover acessos (ZcnAcPode).
+@type Static Function
+@param oReq JsonObject, {numero, filial}
+@return JsonObject, {success, podeGerenciar, tipoPadrao, tipos:[{value,label}], acessos:[{recno,usuario,login,nome,grupo,grupoNome,tipo,tipoLabel}]}
+/*/
+//=============================================================================================================================
+Static Function ZcnAcLst(oReq)
+
+    Local oResp    := JsonObject():New()
+    Local aAcessos := {}
+    Local aTipos   := ZcnCbox("CNN_TRACOD")
+    Local oLinha   := Nil
+    Local cAliasQ  := ""
+    Local cNumero  := ""
+    Local cCtr     := ""
+    Local cFilBkp  := ZcnAcFil(oReq)
+    Local nPos     := 0
+
+    If ValType(oReq["numero"]) == "C" ; cNumero := AllTrim(oReq["numero"]) ; EndIf
+
+    If Empty(cNumero)
+        cFilAnt := cFilBkp
+        oResp["success"] := .F.
+        oResp["message"] := "Numero do contrato nao informado"
+        Return oResp
+    EndIf
+
+    cCtr    := Padr(cNumero, TamSX3("CNN_CONTRA")[1])
+    cAliasQ := GetNextAlias()
+    BeginSql Alias cAliasQ
+        SELECT CNN.R_E_C_N_O_ AS CNNRECNO
+          FROM %table:CNN% CNN
+         WHERE CNN.%notDel%
+           AND CNN.CNN_FILIAL = %xfilial:CNN%
+           AND CNN.CNN_CONTRA = %exp:cCtr%
+         ORDER BY CNN.CNN_USRCOD, CNN.CNN_TRACOD
+    EndSql
+
+    // Le o registro pelo RECNO (nao pelas colunas da query) -- CNN_GRPCOD pode nao existir
+    // neste dicionario, ZcnSFld degrada pra "" sem quebrar a listagem.
+    DbSelectArea("CNN")
+    While (cAliasQ)->(!Eof())
+        CNN->(DbGoTo((cAliasQ)->CNNRECNO))
+        oLinha := JsonObject():New()
+        oLinha["recno"]     := (cAliasQ)->CNNRECNO
+        oLinha["usuario"]   := AllTrim(CNN->CNN_USRCOD)
+        oLinha["login"]     := IIf(Empty(oLinha["usuario"]), "", AllTrim(UsrRetName(oLinha["usuario"])))
+        oLinha["nome"]      := IIf(Empty(oLinha["usuario"]), "", AllTrim(UsrFullName(oLinha["usuario"])))
+        oLinha["grupo"]     := AllTrim(ZcnSFld("CNN", "CNN_GRPCOD"))
+        oLinha["grupoNome"] := IIf(Empty(oLinha["grupo"]), "", AllTrim(GrpRetName(oLinha["grupo"])))
+        oLinha["tipo"]      := AllTrim(CNN->CNN_TRACOD)
+        nPos := AScan(aTipos, {|o| o["value"] == oLinha["tipo"]})
+        oLinha["tipoLabel"] := IIf(nPos > 0, aTipos[nPos]["label"], oLinha["tipo"])
+        aAdd(aAcessos, oLinha)
+        (cAliasQ)->(DbSkip())
+    EndDo
+    (cAliasQ)->(DbCloseArea())
+
+    oResp["success"]       := .T.
+    oResp["podeGerenciar"] := ZcnAcPode(cNumero)
+    oResp["tipoPadrao"]    := ZcnAcTot()
+    oResp["tipos"]         := aTipos
+    oResp["acessos"]       := aAcessos
+
+    cFilAnt := cFilBkp
+
+Return oResp
+
+/*/{Protheus.doc} ZcnAcAdd
+Concede acesso ao contrato para um usuario (grava CNN, operacao "acessoAdicionar").
+@type Static Function
+@param oReq JsonObject, {numero, filial, usuario, tipo (vazio = acesso total)}
+@return JsonObject, {success, message}
+/*/
+//=============================================================================================================================
+Static Function ZcnAcAdd(oReq)
+
+    Local oResp    := JsonObject():New()
+    Local oErr     := Nil
+    Local bPrevErr := Nil
+    Local cFilBkp  := ZcnAcFil(oReq)
+    Local cNumero  := ""
+    Local cUsr     := ""
+    Local cTipo    := ""
+
+    If ValType(oReq["numero"])  == "C" ; cNumero := AllTrim(oReq["numero"])  ; EndIf
+    If ValType(oReq["usuario"]) == "C" ; cUsr    := AllTrim(oReq["usuario"]) ; EndIf
+    If ValType(oReq["tipo"])    == "C" ; cTipo   := AllTrim(oReq["tipo"])    ; EndIf
+    If Empty(cTipo)
+        cTipo := ZcnAcTot()
+    EndIf
+
+    oResp["success"] := .F.
+    Do Case
+    Case Empty(cNumero) .Or. Empty(cUsr)
+        oResp["message"] := "Informe o contrato e o usuario."
+    Case !CN9->(dbSetOrder(1), dbSeek(xFilial("CN9") + Padr(cNumero, TamSX3("CN9_NUMERO")[1])))
+        oResp["message"] := "Contrato [" + cNumero + "] nao encontrado na filial " + AllTrim(cFilAnt) + "."
+    Case Empty(UsrRetName(cUsr))
+        oResp["message"] := "Usuario [" + cUsr + "] nao encontrado."
+    Case !ZcnAcPode(cNumero)
+        oResp["message"] := "Voce nao tem acesso total a este contrato para conceder acesso a outros usuarios."
+    Case ZcnAcQtd(cNumero, cUsr, cTipo) > 0
+        oResp["message"] := "O usuario " + AllTrim(UsrRetName(cUsr)) + " ja possui este acesso ao contrato."
+    OtherWise
+        bPrevErr := ErrorBlock({|e| Break(e)})
+        Begin Sequence
+            ZcnAcGrv(cNumero, cUsr, cTipo)
+            oResp["success"] := .T.
+            oResp["message"] := "Acesso concedido ao usuario " + AllTrim(UsrRetName(cUsr)) + "."
+        Recover Using oErr
+            oResp["success"] := .F.
+            oResp["message"] := "Erro ao gravar o acesso (CNN): " + AllTrim(oErr:description)
+        End Sequence
+        ErrorBlock(bPrevErr)
+    EndCase
+
+    cFilAnt := cFilBkp
+
+Return oResp
+
+/*/{Protheus.doc} ZcnAcRem
+Remove um acesso do contrato (registro CNN pelo RECNO, operacao "acessoRemover") -- confere que
+o registro e mesmo do contrato informado antes de apagar. Nao deixa o contrato sem nenhum
+usuario com acesso total (ninguem mais conseguiria abri-lo nem dar acesso pela tela).
+@type Static Function
+@param oReq JsonObject, {numero, filial, recno}
+@return JsonObject, {success, message}
+/*/
+//=============================================================================================================================
+Static Function ZcnAcRem(oReq)
+
+    Local oResp    := JsonObject():New()
+    Local cFilBkp  := ZcnAcFil(oReq)
+    Local cNumero  := ""
+    Local cTot     := ZcnAcTot()
+    Local nRecno   := 0
+
+    If ValType(oReq["numero"]) == "C" ; cNumero := AllTrim(oReq["numero"]) ; EndIf
+    If ValType(oReq["recno"])  == "N" ; nRecno  := oReq["recno"]            ; EndIf
+
+    oResp["success"] := .F.
+    DbSelectArea("CNN")
+    If nRecno > 0
+        CNN->(DbGoTo(nRecno))
+    EndIf
+
+    Do Case
+    Case Empty(cNumero) .Or. nRecno <= 0
+        oResp["message"] := "Informe o contrato e o acesso a remover."
+    Case CNN->(Eof()) .Or. CNN->(Deleted()) .Or. CNN->CNN_FILIAL != xFilial("CNN") .Or. AllTrim(CNN->CNN_CONTRA) != cNumero
+        oResp["message"] := "Acesso nao encontrado para o contrato [" + cNumero + "]."
+    Case !ZcnAcPode(cNumero)
+        oResp["message"] := "Voce nao tem acesso total a este contrato para remover acessos."
+    Case AllTrim(CNN->CNN_TRACOD) == AllTrim(cTot) .And. !Empty(CNN->CNN_USRCOD) .And. ZcnAcQtdTot(cNumero) <= 1
+        oResp["message"] := "Nao e possivel remover o unico usuario com acesso total ao contrato."
+    OtherWise
+        RecLock("CNN", .F.)
+            CNN->(DbDelete())
+        MsUnlock()
+        oResp["success"] := .T.
+        oResp["message"] := "Acesso removido."
+    EndCase
+
+    cFilAnt := cFilBkp
+
+Return oResp
+
+/*/{Protheus.doc} ZcnAcQtdTot
+Quantos usuarios (nao grupos) tem acesso total ao contrato -- usado por ZcnAcRem.
+@type Static Function
+@param cContra caractere, numero do contrato
+@return numerico
+/*/
+//=============================================================================================================================
+Static Function ZcnAcQtdTot(cContra)
+
+    Local cAliasQ := GetNextAlias()
+    Local cTot    := AllTrim(ZcnAcTot())
+    Local cCtr    := Padr(cContra, TamSX3("CNN_CONTRA")[1])
+    Local nQtd    := 0
+
+    BeginSql Alias cAliasQ
+        SELECT CNN.CNN_USRCOD, CNN.CNN_TRACOD
+          FROM %table:CNN% CNN
+         WHERE CNN.%notDel%
+           AND CNN.CNN_FILIAL = %xfilial:CNN%
+           AND CNN.CNN_CONTRA = %exp:cCtr%
+         ORDER BY CNN.CNN_USRCOD
+    EndSql
+    While (cAliasQ)->(!Eof())
+        If !Empty((cAliasQ)->CNN_USRCOD) .And. AllTrim((cAliasQ)->CNN_TRACOD) == cTot
+            nQtd++
+        EndIf
+        (cAliasQ)->(DbSkip())
+    EndDo
+    (cAliasQ)->(DbCloseArea())
+
+Return nQtd
+
+/*/{Protheus.doc} ZcnUsr
+Lookup de usuarios do Protheus (operacao "lookupUsuario") para conceder acesso ao contrato --
+consulta a SYS_USR (usuarios ativos) por codigo/login/nome. Se a consulta SQL falhar (tabela de
+usuarios em outro formato neste ambiente), cai para AllUsers().
+@type Static Function
+@param oReq JsonObject, {filtro}
+@return JsonObject, {success, items:[{codigo,login,nome}], hasNext}
+/*/
+//=============================================================================================================================
+Static Function ZcnUsr(oReq)
+
+    Local oResp    := JsonObject():New()
+    Local aItens   := {}
+    Local aUsr     := {}
+    Local oItem    := Nil
+    Local oErr     := Nil
+    Local bPrevErr := Nil
+    Local cAliasQ  := GetNextAlias()
+    Local cFiltro  := ""
+    Local cQuery   := ""
+    Local lSql     := .F.
+    Local nI       := 0
+
+    If ValType(oReq["filtro"]) == "C" ; cFiltro := Upper(AllTrim(oReq["filtro"])) ; EndIf
+    cFiltro := StrTran(StrTran(cFiltro, "'", ""), "%", "")
+
+    bPrevErr := ErrorBlock({|e| Break(e)})
+    Begin Sequence
+        cQuery := "SELECT USR_ID, USR_CODIGO, USR_NOME FROM SYS_USR" +;
+            " WHERE D_E_L_E_T_ = ' ' AND USR_MSBLQL <> '1'" +;
+            " AND (USR_ID LIKE '%" + cFiltro + "%' OR UPPER(USR_CODIGO) LIKE '%" + cFiltro + "%'" +;
+            " OR UPPER(USR_NOME) LIKE '%" + cFiltro + "%')" +;
+            " ORDER BY USR_NOME"
+        MPSysOpenQuery(cQuery, cAliasQ)
+        While (cAliasQ)->(!Eof()) .And. Len(aItens) < 20
+            oItem := JsonObject():New()
+            oItem["codigo"] := AllTrim((cAliasQ)->USR_ID)
+            oItem["login"]  := AllTrim((cAliasQ)->USR_CODIGO)
+            oItem["nome"]   := AllTrim((cAliasQ)->USR_NOME)
+            aAdd(aItens, oItem)
+            (cAliasQ)->(DbSkip())
+        EndDo
+        (cAliasQ)->(DbCloseArea())
+        lSql := .T.
+    Recover Using oErr
+        lSql := .F.
+    End Sequence
+    ErrorBlock(bPrevErr)
+
+    If !lSql
+        aItens := {}
+        aUsr   := AllUsers()
+        For nI := 1 To Len(aUsr)
+            If Len(aItens) >= 20
+                Exit
+            EndIf
+            If !aUsr[nI][1][17] .And. (Empty(cFiltro) .Or. cFiltro $ Upper(aUsr[nI][1][1] + " " + aUsr[nI][1][2] + " " + aUsr[nI][1][4]))
+                oItem := JsonObject():New()
+                oItem["codigo"] := AllTrim(aUsr[nI][1][1])
+                oItem["login"]  := AllTrim(aUsr[nI][1][2])
+                oItem["nome"]   := AllTrim(aUsr[nI][1][4])
+                aAdd(aItens, oItem)
+            EndIf
+        Next nI
+    EndIf
+
+    oResp["success"] := .T.
+    oResp["items"]   := aItens
+    oResp["hasNext"] := .F.
+
+Return oResp
+
 /*/{Protheus.doc} ZcnPess
 Lookup de cliente/fornecedor (operacao "lookupPessoa") -- consulta SA2
 (compra) ou SA1 (venda) por codigo/nome, mesmo estilo de
@@ -1942,7 +4706,7 @@ Static Function ZcnPess(oReq)
 
     If ValType(oReq["tipo"]) == "C" ; cTipo   := AllTrim(oReq["tipo"])   ; EndIf
     If ValType(oReq["filtro"]) == "C" ; cFiltro := AllTrim(oReq["filtro"]) ; EndIf
-    cLike := "%'%" + cFiltro + "%'%"
+    cLike := "%'%" + Upper(cFiltro) + "%'%" // UPPER nos dois lados: busca sem diferenciar maiuscula/minuscula
 
     If cTipo == "C"
         BeginSql Alias cAliasQ
@@ -1950,7 +4714,7 @@ Static Function ZcnPess(oReq)
               FROM %table:SA2% SA2
              WHERE SA2.%notDel%
                AND SA2.A2_FILIAL = %xfilial:SA2%
-               AND (SA2.A2_COD LIKE %exp:cLike% OR SA2.A2_NOME LIKE %exp:cLike%)
+               AND (UPPER(SA2.A2_COD) LIKE %exp:cLike% OR UPPER(SA2.A2_NOME) LIKE %exp:cLike%)
              ORDER BY SA2.A2_NOME
         EndSql
     Else
@@ -1959,7 +4723,7 @@ Static Function ZcnPess(oReq)
               FROM %table:SA1% SA1
              WHERE SA1.%notDel%
                AND SA1.A1_FILIAL = %xfilial:SA1%
-               AND (SA1.A1_COD LIKE %exp:cLike% OR SA1.A1_NOME LIKE %exp:cLike%)
+               AND (UPPER(SA1.A1_COD) LIKE %exp:cLike% OR UPPER(SA1.A1_NOME) LIKE %exp:cLike%)
              ORDER BY SA1.A1_NOME
         EndSql
     EndIf
@@ -2004,14 +4768,14 @@ Static Function ZcnTpCt(oReq)
     Local nCount  := 0
 
     If ValType(oReq["filtro"]) == "C" ; cFiltro := AllTrim(oReq["filtro"]) ; EndIf
-    cLike := "%'%" + cFiltro + "%'%"
+    cLike := "%'%" + Upper(cFiltro) + "%'%" // UPPER nos dois lados: busca sem diferenciar maiuscula/minuscula
 
     BeginSql Alias cAliasQ
         SELECT CN1_CODIGO AS CODIGO, CN1_DESCRI AS DESCRI, CN1_ESPCTR AS ESPCTR
           FROM %table:CN1% CN1
          WHERE CN1.%notDel%
            AND CN1.CN1_FILIAL = %xfilial:CN1%
-           AND (CN1.CN1_CODIGO LIKE %exp:cLike% OR CN1.CN1_DESCRI LIKE %exp:cLike%)
+           AND (UPPER(CN1.CN1_CODIGO) LIKE %exp:cLike% OR UPPER(CN1.CN1_DESCRI) LIKE %exp:cLike%)
          ORDER BY CN1.CN1_DESCRI
     EndSql
 
@@ -2052,14 +4816,14 @@ Static Function ZcnProd(oReq)
     Local nCount  := 0
 
     If ValType(oReq["filtro"]) == "C" ; cFiltro := AllTrim(oReq["filtro"]) ; EndIf
-    cLike := "%'%" + cFiltro + "%'%"
+    cLike := "%'%" + Upper(cFiltro) + "%'%" // UPPER nos dois lados: busca sem diferenciar maiuscula/minuscula
 
     BeginSql Alias cAliasQ
-        SELECT B1_COD AS CODIGO, B1_DESC AS DESCRI
+        SELECT B1_COD AS CODIGO, B1_DESC AS DESCRI, B1_UM AS UM
           FROM %table:SB1% SB1
          WHERE SB1.%notDel%
            AND SB1.B1_FILIAL = %xfilial:SB1%
-           AND (SB1.B1_COD LIKE %exp:cLike% OR SB1.B1_DESC LIKE %exp:cLike%)
+           AND (UPPER(SB1.B1_COD) LIKE %exp:cLike% OR UPPER(SB1.B1_DESC) LIKE %exp:cLike%)
          ORDER BY SB1.B1_DESC
     EndSql
 
@@ -2067,6 +4831,7 @@ Static Function ZcnProd(oReq)
         oItem := JsonObject():New()
         oItem["codigo"]    := AllTrim((cAliasQ)->CODIGO)
         oItem["descricao"] := AllTrim((cAliasQ)->DESCRI)
+        oItem["unidade"]   := AllTrim((cAliasQ)->UM)
         aAdd(aItens, oItem)
         nCount++
         (cAliasQ)->(DbSkip())
@@ -2100,14 +4865,14 @@ Static Function ZcnCndPg(oReq)
     Local nCount  := 0
 
     If ValType(oReq["filtro"]) == "C" ; cFiltro := AllTrim(oReq["filtro"]) ; EndIf
-    cLike := "%'%" + cFiltro + "%'%"
+    cLike := "%'%" + Upper(cFiltro) + "%'%" // UPPER nos dois lados: busca sem diferenciar maiuscula/minuscula
 
     BeginSql Alias cAliasQ
         SELECT E4_CODIGO AS CODIGO, E4_DESCRI AS DESCRI
           FROM %table:SE4% SE4
          WHERE SE4.%notDel%
            AND SE4.E4_FILIAL = %xfilial:SE4%
-           AND (SE4.E4_CODIGO LIKE %exp:cLike% OR SE4.E4_DESCRI LIKE %exp:cLike%)
+           AND (UPPER(SE4.E4_CODIGO) LIKE %exp:cLike% OR UPPER(SE4.E4_DESCRI) LIKE %exp:cLike%)
          ORDER BY SE4.E4_CODIGO
     EndSql
 
@@ -2149,14 +4914,14 @@ Static Function ZcnNat(oReq)
     Local nCount  := 0
 
     If ValType(oReq["filtro"]) == "C" ; cFiltro := AllTrim(oReq["filtro"]) ; EndIf
-    cLike := "%'%" + cFiltro + "%'%"
+    cLike := "%'%" + Upper(cFiltro) + "%'%" // UPPER nos dois lados: busca sem diferenciar maiuscula/minuscula
 
     BeginSql Alias cAliasQ
         SELECT ED_CODIGO AS CODIGO, ED_DESCRIC AS DESCRI
           FROM %table:SED% SED
          WHERE SED.%notDel%
            AND SED.ED_FILIAL = %xfilial:SED%
-           AND (SED.ED_CODIGO LIKE %exp:cLike% OR SED.ED_DESCRIC LIKE %exp:cLike%)
+           AND (UPPER(SED.ED_CODIGO) LIKE %exp:cLike% OR UPPER(SED.ED_DESCRIC) LIKE %exp:cLike%)
          ORDER BY SED.ED_CODIGO
     EndSql
 
@@ -2175,6 +4940,57 @@ Static Function ZcnNat(oReq)
     oResp["hasNext"] := .F.
 
 Return oResp
+
+/*/{Protheus.doc} ZcnPlaExigeCrg
+Resolve se UM Tipo de Planilha (CNL) especifico exige cronograma financeiro/
+fisico -- mesmos candidatos de campo do lookup ZcnTpPla (logo abaixo), mas
+para um codigo ja conhecido. Usado por ZcnMont para devolver esse flag em
+planilhas de um contrato JA SALVO (o lookup ZcnTpPla so cobre a combo de
+selecao na tela de criacao) -- sem isso, o botao "Editar Parcela" nao tinha
+como saber, ao reabrir um contrato existente, se a planilha permite
+cronograma (pedido do usuario 2026-09-23, com base na doc oficial de
+Contrato Flexivel: Medicao Eventual/Ctr. Fixo determinam se ha cronograma).
+@type Static Function
+@param cCodigo caractere, codigo do Tipo de Planilha (CNA_TIPPLA)
+@return logico ou Nil (campo nao localizado no dicionario, ou codigo vazio/nao encontrado)
+/*/
+//=============================================================================================================================
+Static Function ZcnPlaExigeCrg(cCodigo)
+
+    Local cCpoCrg  := ZcnCpo({"CNL_CRONOG", "CNL_GERCRO", "CNL_TPCRO", "CNL_FISFIN"})
+    Local cAliasQ  := ""
+    Local cValCrg  := ""
+    Local xRet     := Nil
+    Local bPrevErr := Nil
+
+    If Empty(cCpoCrg) .Or. Empty(AllTrim(cCodigo))
+        Return Nil
+    EndIf
+
+    cAliasQ  := GetNextAlias()
+    bPrevErr := ErrorBlock({|e| Break(e)})
+    Begin Sequence
+        BeginSql Alias cAliasQ
+            SELECT CNL.%exp:cCpoCrg% AS CRONOG
+              FROM %table:CNL% CNL
+             WHERE CNL.%notDel%
+               AND CNL.CNL_FILIAL = %xfilial:CNL%
+               AND CNL.CNL_CODIGO = %exp:AllTrim(cCodigo)%
+        EndSql
+        If (cAliasQ)->(!Eof())
+            cValCrg := AllTrim(Upper(cValToChar((cAliasQ)->CRONOG)))
+            xRet := cValCrg == "S" .Or. cValCrg == "1" .Or. cValCrg == "T" .Or. cValCrg == "Y"
+        EndIf
+        (cAliasQ)->(DbCloseArea())
+    Recover
+        xRet := Nil
+        If Select(cAliasQ) > 0
+            (cAliasQ)->(DbCloseArea())
+        EndIf
+    End Sequence
+    ErrorBlock(bPrevErr)
+
+Return xRet
 
 /*/{Protheus.doc} ZcnTpPla
 Lookup de Tipo de Planilha (operacao "lookupTipoPlanilha") -- consulta CNL
@@ -2205,10 +5021,9 @@ Static Function ZcnTpPla(oReq)
     Local cValCrg := ""
     Local lComCrg := !Empty(cCpoCrg)
     Local bPrevErr := Nil
-    Local oErrCrg  := Nil
 
     If ValType(oReq["filtro"]) == "C" ; cFiltro := AllTrim(oReq["filtro"]) ; EndIf
-    cLike := "%'%" + cFiltro + "%'%"
+    cLike := "%'%" + Upper(cFiltro) + "%'%" // UPPER nos dois lados: busca sem diferenciar maiuscula/minuscula
 
     // BeginSql e macro de COMPILACAO -- nao da pra injetar um trecho de SQL OPCIONAL via %exp:
     // quando a variavel vem vazia: o preprocessador troca "" por um literal ' ' em vez de nada,
@@ -2224,10 +5039,10 @@ Static Function ZcnTpPla(oReq)
                   FROM %table:CNL% CNL
                  WHERE CNL.%notDel%
                    AND CNL.CNL_FILIAL = %xfilial:CNL%
-                   AND (CNL.CNL_CODIGO LIKE %exp:cLike% OR CNL.CNL_DESCRI LIKE %exp:cLike%)
+                   AND (UPPER(CNL.CNL_CODIGO) LIKE %exp:cLike% OR UPPER(CNL.CNL_DESCRI) LIKE %exp:cLike%)
                  ORDER BY CNL.CNL_CODIGO
             EndSql
-        Recover Using oErrCrg
+        Recover
             lComCrg := .F.
             If Select(cAliasQ) > 0
                 (cAliasQ)->(DbCloseArea())
@@ -2242,7 +5057,7 @@ Static Function ZcnTpPla(oReq)
               FROM %table:CNL% CNL
              WHERE CNL.%notDel%
                AND CNL.CNL_FILIAL = %xfilial:CNL%
-               AND (CNL.CNL_CODIGO LIKE %exp:cLike% OR CNL.CNL_DESCRI LIKE %exp:cLike%)
+               AND (UPPER(CNL.CNL_CODIGO) LIKE %exp:cLike% OR UPPER(CNL.CNL_DESCRI) LIKE %exp:cLike%)
              ORDER BY CNL.CNL_CODIGO
         EndSql
     EndIf
@@ -2293,13 +5108,13 @@ Static Function ZcnTes(oReq)
     Local nCount  := 0
 
     If ValType(oReq["filtro"]) == "C" ; cFiltro := AllTrim(oReq["filtro"]) ; EndIf
-    cLike := "%'%" + cFiltro + "%'%"
+    cLike := "%'%" + Upper(cFiltro) + "%'%" // UPPER nos dois lados: busca sem diferenciar maiuscula/minuscula
 
     BeginSql Alias cAliasQ
         SELECT F4_CODIGO AS CODIGO, F4_TEXTO AS DESCRI
           FROM %table:SF4% SF4
          WHERE SF4.%notDel%
-           AND (SF4.F4_CODIGO LIKE %exp:cLike% OR SF4.F4_TEXTO LIKE %exp:cLike%)
+           AND (UPPER(SF4.F4_CODIGO) LIKE %exp:cLike% OR UPPER(SF4.F4_TEXTO) LIKE %exp:cLike%)
          ORDER BY SF4.F4_CODIGO
     EndSql
 
@@ -2338,14 +5153,14 @@ Static Function ZcnCCus(oReq)
     Local nCount  := 0
 
     If ValType(oReq["filtro"]) == "C" ; cFiltro := AllTrim(oReq["filtro"]) ; EndIf
-    cLike := "%'%" + cFiltro + "%'%"
+    cLike := "%'%" + Upper(cFiltro) + "%'%" // UPPER nos dois lados: busca sem diferenciar maiuscula/minuscula
 
     BeginSql Alias cAliasQ
         SELECT CTT_CUSTO AS CODIGO, CTT_DESC01 AS DESCRI
           FROM %table:CTT% CTT
          WHERE CTT.%notDel%
            AND CTT.CTT_FILIAL = %xfilial:CTT%
-           AND (CTT.CTT_CUSTO LIKE %exp:cLike% OR CTT.CTT_DESC01 LIKE %exp:cLike%)
+           AND (UPPER(CTT.CTT_CUSTO) LIKE %exp:cLike% OR UPPER(CTT.CTT_DESC01) LIKE %exp:cLike%)
          ORDER BY CTT.CTT_CUSTO
     EndSql
 
@@ -2418,7 +5233,7 @@ chave do CN9 (VldData/CommitData recusa duplicata), entao o pior caso e um dos d
 trocar o numero manualmente antes de salvar -- nao um dado corrompido.
 @type Static Function
 @param oReq JsonObject, {} (sem parametros)
-@return JsonObject, {success, numero}
+@return JsonObject, {success, numero, tamanho}
 /*/
 //=============================================================================================================================
 Static Function ZcnProxNum(oReq)
@@ -2427,21 +5242,25 @@ Static Function ZcnProxNum(oReq)
 
     oResp["success"] := .T.
     oResp["numero"]  := AllTrim(GetSxeNum("CN9", "CN9_NUMERO"))
+    // Tamanho do CN9_NUMERO no SX3 -- para o Angular limitar o campo (maxlength) na digitacao
+    oResp["tamanho"] := TamSX3("CN9_NUMERO")[1]
 
 Return oResp
 
 /*/{Protheus.doc} ZcnMStr
 Le um campo caractere de um submodelo (CNBDETAIL, etc.) de forma segura --
-oSubModel:GetValue devolve Nil se o campo nao existir no submodelo, e
-AllTrim(Nil) estoura erro; esta funcao protege contra isso. Usar para campos
-ainda nao confirmados neste ambiente (ex: CNB_CC).
+em FWFormGridModel (grades), GetValue com um Id de campo que NAO existe na
+estrutura do modelo ESTOURA ERRO em vez de devolver Nil (ao contrario do que
+o nome sugere); por isso a leitura passa por ZcnMGet, que blinda via
+Begin Sequence/Recover. Usar para campos ainda nao confirmados neste
+ambiente (ex: CNB_CC).
 @type Static Function
 @return caractere, valor do campo (trim) ou "" se nao existir/nao for caractere
 /*/
 //=============================================================================================================================
 Static Function ZcnMStr(oSubModel, cCampo)
 
-    Local xVal := oSubModel:GetValue(cCampo)
+    Local xVal := ZcnMGet(oSubModel, cCampo)
 
 Return IIf(ValType(xVal) == "C", AllTrim(xVal), "")
 
@@ -2453,7 +5272,7 @@ Mesma ideia de ZcnMStr, para campo numerico (ex: CNB_PERDES).
 //=============================================================================================================================
 Static Function ZcnMNum(oSubModel, cCampo)
 
-    Local xVal := oSubModel:GetValue(cCampo)
+    Local xVal := ZcnMGet(oSubModel, cCampo)
 
 Return IIf(ValType(xVal) == "N", xVal, 0)
 
@@ -2467,9 +5286,9 @@ for data/vazio.
 //=============================================================================================================================
 Static Function ZcnMDat(oSubModel, cCampo)
 
-    Local xVal := oSubModel:GetValue(cCampo)
+    Local xVal := ZcnMGet(oSubModel, cCampo)
 
-Return IIf(ValType(xVal) == "D" .And. !Empty(xVal), DToS(xVal), "")
+Return IIf(ValType(xVal) == "D", ZcnDateStr(xVal), "")
 
 
 /*/{Protheus.doc} ZcnSToD
@@ -2538,13 +5357,13 @@ Static Function ZcnCpDic(cChave)
     Case cChave == "indice"
         aCand := {"CNA_INDICE", "CNA_INDREA", "CNA_INDREJ"}
     Case cChave == "periodicidade"
-        aCand := {"CNA_PERREA", "CNA_PERREJ", "CNA_PERIND"}
+        aCand := {"CNA_PERI", "CNA_PERREA", "CNA_PERREJ", "CNA_PERIND"}
     Case cChave == "unidadePer"
         aCand := {"CNA_UNPERI", "CNA_UNIREA", "CNA_UNIPER"}
     Case cChave == "modoReajuste"
-        aCand := {"CNA_MODREJ", "CNA_MODREA", "CNA_TPREJ"}
+        aCand := {"CNA_MODORJ", "CNA_MODREJ", "CNA_MODREA", "CNA_TPREJ"}
     Case cChave == "dataBase"
-        aCand := {"CNA_DTBASE", "CNA_DTBREA", "CNA_DATBAS"}
+        aCand := {"CNA_DTINI"} // "Data base" da tela = CNA_DTINI (confirmado pelo usuario 2026-10-09)
     EndCase
 
     cRet := ZcnCpo(aCand)
@@ -2565,11 +5384,10 @@ Static Function ZcnMGet(oSub, cCampo)
 
     Local bPrev := ErrorBlock({|e| Break(e)})
     Local xVal  := Nil
-    Local oErr  := Nil
 
     Begin Sequence
         xVal := oSub:GetValue(cCampo)
-    Recover Using oErr
+    Recover
         xVal := Nil
     End Sequence
 
@@ -2598,7 +5416,7 @@ Static Function ZcnPlaGet(oSub, cChave, cKind)
         Return IIf(ValType(xVal) == "N", xVal, 0)
     EndIf
     If cKind == "D"
-        Return IIf(ValType(xVal) == "D" .And. !Empty(xVal), DToS(xVal), "")
+        Return IIf(ValType(xVal) == "D", ZcnDateStr(xVal), "")
     EndIf
 
 Return IIf(ValType(xVal) == "C", AllTrim(xVal), "")
@@ -2632,7 +5450,7 @@ Static Function ZcnPlaSet(oModel, aFalhas, aAvisos, cChave, cGrid, xVal)
     cTipo := GetSx3Cache(cCpo, "X3_TIPO")
     Do Case
     Case cTipo == "D"
-        xConv := IIf(ValType(xVal) == "D", xVal, SToD(cValToChar(xVal)))
+        xConv := ZcnSToD(xVal)
     Case cTipo == "N"
         xConv := IIf(ValType(xVal) == "N", xVal, Val(cValToChar(xVal)))
     OtherWise
@@ -2717,7 +5535,6 @@ Static Function ZcnMoeda(oReq)
     Local cDesF   := ZcnCpo({"CTO_DESC", "CTO_DESCRI"})
     Local cDesc   := ""
     Local bPrev   := Nil
-    Local oErr    := Nil
     Local nI      := 0
 
     If AliasInDic("CTO") .And. !Empty(cCodF) .And. !Empty(cDesF)
@@ -2735,7 +5552,7 @@ Static Function ZcnMoeda(oReq)
                 (cAliasQ)->(DbSkip())
             EndDo
             (cAliasQ)->(DbCloseArea())
-        Recover Using oErr
+        Recover
             aItens := {}
             If Select(cAliasQ) > 0
                 (cAliasQ)->(DbCloseArea())

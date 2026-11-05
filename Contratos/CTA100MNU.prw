@@ -20,11 +20,11 @@ UTILIZAÇÃO : Para adicionar botões no menu principal da rotina.
 
     Local aArea := GetArea()
 
-    //aadd(aRotina,{"#Exportar Itens (Medição)","U_RT69M001()",0,4,58,Nil,Nil,Nil})
-    //aadd(aRotina,{"#Importar Itens (Medição)","U_RT69M002()",0,4,58,Nil,Nil,Nil})
-    aadd(aRotina,{"Importar / Exportar Itens do contrato","U_RTM002App()",0,4,58,Nil,Nil,Nil})
+    aadd(aRotina,{"#Exportar Itens (Medição)","U_RT69M001()",0,4,58,Nil,Nil,Nil})
+    aadd(aRotina,{"#Importar Itens (Medição)","U_RT69M002()",0,4,58,Nil,Nil,Nil})
+    //aadd(aRotina,{"Importar / Exportar Itens do contrato","U_RTM002App()",0,4,58,Nil,Nil,Nil})
     aadd(aRotina,{"Histórico Contrato","U_RT69M003()",0,4,58,Nil,Nil,Nil})
-    aadd(aRotina,{"Cadastro de Contratos (nova tela)","U_RTM003App()",0,4,58,Nil,Nil,Nil})
+    //aadd(aRotina,{"Cadastro de Contratos (nova tela)","U_RTM003App()",0,4,58,Nil,Nil,Nil})
     RestArea(aArea)
 Return Nil 
 

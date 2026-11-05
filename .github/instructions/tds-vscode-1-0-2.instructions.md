@@ -24,7 +24,7 @@ NOTICE for extension developers:
 - Mandatory semantic navigation sequence:
 
  1) Locate the symbol with `lsp_workspace_symbols`.
- 2) Confirm the definition with `lsp_definition`.
+ 2) Confirm the defi,nition with `lsp_definition`.
  3) Map usage and impact with `lsp_references`.
 
 - It is forbidden to start with `grep_search`, `file_search`, `read_file`, or manual reading when LS is available.

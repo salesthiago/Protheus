@@ -4,10 +4,18 @@
 		{
 			"type": "totvs_language_web_debug",
 			"request": "launch",
-			"name": "Smart Client Web Debug",
+			"name": "Smart Client Web Debug - TESTE",
 			"program": "${command:AskForProgramName}",
+			"smartclientUrl": "https://177.136.201.210:1080/webapp/",
+			"webNavigator": "/usr/bin/google-chrome",
+			"cwb": "${workspaceFolder}",
 			"isMultiSession": true,
-			"enableTableSync": true
+			"enableMultiThread": true,
+			"enableTableSync": true,
+			"ignoreFiles": false,
+			"extendFeatures": {
+				"charDetails": false
+			}
 		}
 	],
 	"lastPrograms": [
@@ -15,6 +23,5 @@
 			"label": "sigamdi"
 		}
 	],
-	"lastProgramExecuted": "sigamdi",
-	"lastProgramArguments": []
+	"lastProgramExecuted": "sigamdi"
 }

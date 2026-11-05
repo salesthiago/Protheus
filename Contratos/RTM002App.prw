@@ -38,6 +38,8 @@ USER FUNCTION RTM002App()
     // Le o contrato posicionado no browse ANTES de abrir o app -- o FWCallApp roda embutido
     // na mesma thread, mas o browse pode mudar de posicao ou fechar a area enquanto o
     // usuario navega na tela Angular, entao o valor precisa ser congelado aqui.
+    Local cFilBkp := cFilAnt
+
     cAppCtxContrato := ""
     cAppCtxRevisao  := ""
     If Select("CN9") > 0 .And. CN9->(!Eof())
@@ -47,7 +49,74 @@ USER FUNCTION RTM002App()
 
     FWCallApp("rtm002")
 
+    // LocCtr pode trocar cFilAnt para a filial do contrato pesquisado enquanto a tela esta
+    // aberta -- volta para a filial de quem chamou (browse do CNTA100 ou rtm003).
+    cFilAnt := cFilBkp
+
 RETURN
+
+/*/{Protheus.doc} LocCtr
+Localiza e posiciona o CN9 do contrato pesquisado na tela (pedido do usuario 2026-09-30: ao
+abrir "Importar / Exportar" SEM contrato posicionado -- botao do cabecalho do rtm003 -- a busca
+manual nao encontrava contratos que abriam normalmente quando vinham posicionados). Dois motivos:
+1) revisao em branco: o dbSeek exigia a revisao exata; agora revisao vazia = revisao atual
+   (CN9_REVISA = CN9_REVATU), igual a listagem do rtm003;
+2) filial: o dbSeek usava so xFilial("CN9") da sessao; agora, se nao achar na filial corrente,
+   procura em qualquer filial e troca cFilAnt para a do contrato -- todas as consultas seguintes
+   (CNA/CNB/CNF/SA1/SA2, medicao via CNTA121) usam xFilial e passam a olhar a filial certa.
+   RTM002App() restaura cFilAnt ao fechar a tela.
+Mantem a tolerancia a revisao sem zeros a esquerda (Excel remove ao resalvar o CSV).
+@type Static Function
+@param cNumCont Character, numero do contrato
+@param cRevisao Character, revisao (por referencia -- volta com a revisao efetivamente localizada)
+@return Logical, .T. se encontrou (CN9 posicionado)
+/*/
+//=============================================================================================================================
+Static Function LocCtr(cNumCont, cRevisao)
+
+    Local cAliasQ  := GetNextAlias()
+    Local cRevZero := ""
+    Local cRevAtu  := ""
+    Local cFilAtu  := ""
+    Local nRecno   := 0
+    Local lAchou   := .F.
+
+    cNumCont := AllTrim(cNumCont)
+    cRevisao := AllTrim(cRevisao)
+    cRevAtu  := IIf(Empty(cRevisao), "S", "N")
+    cRevZero := IIf(Empty(cRevisao), " ", Padl(cRevisao, TamSX3("CN9_REVISA")[1], "0"))
+    If Empty(cRevisao) ; cRevisao := " " ; EndIf
+    cFilAtu  := xFilial("CN9")
+
+    // Filial corrente primeiro (CASE no ORDER BY), depois as demais.
+    BeginSql Alias cAliasQ
+        SELECT CN9.CN9_FILIAL AS FILIAL, CN9.CN9_REVISA AS REVISA, CN9.R_E_C_N_O_ AS RECCN9,
+               CASE WHEN CN9.CN9_FILIAL = %exp:cFilAtu% THEN 0 ELSE 1 END AS ORDEM
+          FROM %table:CN9% CN9
+         WHERE CN9.%notDel%
+           AND CN9.CN9_NUMERO = %exp:cNumCont%
+           AND (   (%exp:cRevAtu% = 'S' AND CN9.CN9_REVISA = CN9.CN9_REVATU)
+                OR (%exp:cRevAtu% = 'N' AND (CN9.CN9_REVISA = %exp:cRevisao% OR CN9.CN9_REVISA = %exp:cRevZero%)) )
+         ORDER BY ORDEM, CN9.CN9_FILIAL
+    EndSql
+
+    If (cAliasQ)->(!Eof())
+        nRecno := (cAliasQ)->RECCN9
+        If (cAliasQ)->ORDEM <> 0
+            cFilAnt := Padr(AllTrim((cAliasQ)->FILIAL), Len(cFilAnt))
+        EndIf
+    EndIf
+    (cAliasQ)->(DbCloseArea())
+
+    If nRecno > 0
+        CN9->(DbGoTo(nRecno))
+        lAchou   := CN9->(!Eof()) .And. AllTrim(CN9->CN9_NUMERO) == cNumCont
+        cRevisao := AllTrim(CN9->CN9_REVISA)
+    Else
+        cRevisao := AllTrim(cRevisao)
+    EndIf
+
+Return lAchou
 
 /*/{Protheus.doc} JsToAdvpl
 Recebe mensagens da tela Angular (rtm002) pelo canal AdvplToJs/JsToAdvpl
@@ -163,10 +232,7 @@ Static Function CabCtr(oReq)
     CN9->(dbSetOrder(1))
     nTamNum   := Max(TamSX3("CN9_NUMERO")[1], Len(cNumCont))
     nTamRev   := Max(TamSX3("CN9_REVISA")[1], Len(cRevisao))
-    lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padr(cRevisao, nTamRev)))
-    If !lAchouCN9
-        lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padl(cRevisao, nTamRev, "0")))
-    EndIf
+    lAchouCN9 := LocCtr(cNumCont, @cRevisao)
 
     If !lAchouCN9
         oResp["success"] := .F.
@@ -229,10 +295,14 @@ Static Function CabCtr(oReq)
     Next nI
 
     oResp["success"]       := .T.
+    oResp["revisao"]       := cRevisao // revisao localizada por LocCtr (tela preenche o campo)
     oResp["tipo"]          := cTipo
     oResp["pessoas"]       := aPessoas
     oResp["saldoContrato"] := SaldoCtr(cNumCont, cRevisao)
     oResp["competencias"]  := aCompets
+    // Casas decimais de CNE_QUANT -- a tela arredonda as quantidades rateadas pela "Meta"
+    // nesta precisao, senao o modelo da CNTA121 arredonda depois e o total deixa de bater.
+    oResp["decQuant"]      := TamSX3("CNE_QUANT")[2]
 
 Return oResp
 
@@ -279,10 +349,7 @@ Static Function ListaPlan(oReq)
     CN9->(dbSetOrder(1))
     nTamNum   := Max(TamSX3("CN9_NUMERO")[1], Len(cNumCont))
     nTamRev   := Max(TamSX3("CN9_REVISA")[1], Len(cRevisao))
-    lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padr(cRevisao, nTamRev)))
-    If !lAchouCN9
-        lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padl(cRevisao, nTamRev, "0")))
-    EndIf
+    lAchouCN9 := LocCtr(cNumCont, @cRevisao)
     If !lAchouCN9
         oResp["success"] := .F.
         oResp["message"] := "Contrato [" + cNumCont + "] revisao [" + cRevisao + "] nao encontrado."
@@ -411,10 +478,7 @@ Static Function ExportarCtr(oReq)
     CN9->(dbSetOrder(1))
     nTamNum   := Max(TamSX3("CN9_NUMERO")[1], Len(cNumCont))
     nTamRev   := Max(TamSX3("CN9_REVISA")[1], Len(cRevisao))
-    lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padr(cRevisao, nTamRev)))
-    If !lAchouCN9
-        lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padl(cRevisao, nTamRev, "0")))
-    EndIf
+    lAchouCN9 := LocCtr(cNumCont, @cRevisao)
     If !lAchouCN9
         oResp["success"] := .F.
         oResp["message"] := "Contrato [" + cNumCont + "] revisao [" + cRevisao + "] nao encontrado."
@@ -576,10 +640,7 @@ Static Function ItensPlan(oReq)
     CN9->(dbSetOrder(1))
     nTamNum   := Max(TamSX3("CN9_NUMERO")[1], Len(cNumCont))
     nTamRev   := Max(TamSX3("CN9_REVISA")[1], Len(cRevisao))
-    lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padr(cRevisao, nTamRev)))
-    If !lAchouCN9
-        lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padl(cRevisao, nTamRev, "0")))
-    EndIf
+    lAchouCN9 := LocCtr(cNumCont, @cRevisao)
     If !lAchouCN9
         oResp["success"] := .F.
         oResp["message"] := "Contrato [" + cNumCont + "] revisao [" + cRevisao + "] nao encontrado."
@@ -1308,10 +1369,7 @@ Static Function GerarPlan(cNumCont, cRevisao, cCompet, cCliente, cLojaCli, cForn
     CN9->(dbSetOrder(1))
     nTamNum   := Max(TamSX3("CN9_NUMERO")[1], Len(cNumCont))
     nTamRev   := Max(TamSX3("CN9_REVISA")[1], Len(cRevisao))
-    lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padr(cRevisao, nTamRev)))
-    If !lAchouCN9
-        lAchouCN9 := CN9->(dbSeek(xFilial("CN9") + Padr(cNumCont, nTamNum) + Padl(cRevisao, nTamRev, "0")))
-    EndIf
+    lAchouCN9 := LocCtr(cNumCont, @cRevisao)
     If !lAchouCN9
         oResPlan["success"] := .F.
         oResPlan["message"] := "Contrato [" + cNumCont + "] revisao [" + cRevisao + "] nao encontrado na filial."
