@@ -1,0 +1,9 @@
+# Projetos com repositorio proprio
+/POUI/
+/Aterro/sync_python/
+
+# Pacotes compilados do PO UI (gerados no build)
+*.[aA][pP][pP]
+
+# Dependencias
+node_modules/
