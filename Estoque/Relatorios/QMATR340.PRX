@@ -32,15 +32,8 @@
 ±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
 ßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßßß
 */
-Function MATR340()
+User Function QMATR340()
 Local oReport:= ReportDef()
-
-//Validação de aviso/bloqueio do relatório em Release 12.1.2510 ou superiores
-If ExistFunc("VldDescRel")
-	If !VldDescRel()
-		Return
-	EndIf
-EndIf
 
 oReport:PrintDialog()
 
@@ -84,7 +77,7 @@ Local nX       := 0
 //³ExpC5 : Descricao                                                       ³
 //³                                                                        ³
 //ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ
-oReport:= TReport():New("MATR340",OemToAnsi(STR0001),"MTR340", {|oReport| ReportPrint(oReport)},OemToAnsi(STR0002)+" "+OemToAnsi(STR0003)+" "+OemToAnsi(STR0004)) //##"Este programa exibira' o consumo dos ultimos 12 meses de cada material"##"ou produto acabado. No caso dos produtos ele estara' listando o  total"##"das vendas."
+oReport:= TReport():New("QMATR340",OemToAnsi(STR0001),"MTR340", {|oReport| ReportPrint(oReport)},OemToAnsi(STR0002)+" "+OemToAnsi(STR0003)+" "+OemToAnsi(STR0004)) //##"Este programa exibira' o consumo dos ultimos 12 meses de cada material"##"ou produto acabado. No caso dos produtos ele estara' listando o  total"##"das vendas."
 oReport:SetLandscape()
 //ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿
 //³ Verifica as perguntas selecionadas                           ³

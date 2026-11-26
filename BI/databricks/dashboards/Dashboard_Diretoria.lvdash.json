@@ -1,0 +1,1747 @@
+{
+  "datasets": [
+    {
+      "name": "dir_kpi",
+      "displayName": "Diretoria - totais",
+      "queryLines": [
+        "SELECT *, frota + pessoal + administrativo + judicial + demais AS custo_total, receita - (frota + pessoal + administrativo + judicial + demais) AS saldo, try_divide(receita - (frota + pessoal + administrativo + judicial + demais), receita) AS margem FROM (SELECT coalesce(sum(CASE WHEN linha = 'Receita' THEN valor END), 0) AS receita, coalesce(sum(CASE WHEN linha = 'Frota' THEN valor END), 0) AS frota, coalesce(sum(CASE WHEN linha = 'Pessoal' THEN valor END), 0) AS pessoal, coalesce(sum(CASE WHEN linha = 'Administrativo' THEN valor END), 0) AS administrativo, coalesce(sum(CASE WHEN linha = 'Processos judiciais' THEN valor END), 0) AS judicial, coalesce(sum(CASE WHEN linha = 'Demais custos da operação' THEN valor END), 0) AS demais FROM quebec.diretoria.vw_dir_mapa WHERE (:filial = 'Todas' OR filial = :filial) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim)"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "dir_mapa",
+      "displayName": "Diretoria - mapa",
+      "queryLines": [
+        "WITH l AS (SELECT linha, ordem, sum(valor) AS valor FROM quebec.diretoria.vw_dir_mapa WHERE (:filial = 'Todas' OR filial = :filial) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim GROUP BY linha, ordem), s AS (SELECT 'Saldo' AS linha, 9 AS ordem, sum(CASE WHEN linha = 'Receita' THEN valor ELSE -valor END) AS valor FROM l) SELECT concat(ordem, '. ', linha) AS linha, CASE WHEN linha = 'Receita' THEN 'Entrou' WHEN linha = 'Saldo' THEN 'Saldo' ELSE 'Saiu' END AS tipo, CASE WHEN linha IN ('Receita', 'Saldo') THEN valor ELSE -valor END AS valor, abs(valor) AS valor_abs, try_divide(valor, (SELECT sum(valor) FROM l WHERE linha = 'Receita')) AS pct_receita FROM (SELECT * FROM l UNION ALL SELECT * FROM s) ORDER BY ordem"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "dir_mes",
+      "displayName": "Diretoria - mês a mês",
+      "queryLines": [
+        "SELECT *, frota + pessoal + administrativo + judicial + demais AS custo_total, receita - (frota + pessoal + administrativo + judicial + demais) AS saldo, try_divide(receita - (frota + pessoal + administrativo + judicial + demais), receita) AS margem FROM (SELECT mes, coalesce(sum(CASE WHEN linha = 'Receita' THEN valor END), 0) AS receita, coalesce(sum(CASE WHEN linha = 'Frota' THEN valor END), 0) AS frota, coalesce(sum(CASE WHEN linha = 'Pessoal' THEN valor END), 0) AS pessoal, coalesce(sum(CASE WHEN linha = 'Administrativo' THEN valor END), 0) AS administrativo, coalesce(sum(CASE WHEN linha = 'Processos judiciais' THEN valor END), 0) AS judicial, coalesce(sum(CASE WHEN linha = 'Demais custos da operação' THEN valor END), 0) AS demais FROM quebec.diretoria.vw_dir_mapa WHERE (:filial = 'Todas' OR filial = :filial) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim GROUP BY mes) ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "dir_mes_custo",
+      "displayName": "Diretoria - custos por mês",
+      "queryLines": [
+        "SELECT mes, linha, sum(valor) AS valor FROM quebec.diretoria.vw_dir_mapa WHERE (:filial = 'Todas' OR filial = :filial) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim AND linha <> 'Receita' GROUP BY mes, linha ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "dir_nat",
+      "displayName": "Diretoria - maiores naturezas",
+      "queryLines": [
+        "SELECT linha, grupo, natureza, natureza_desc, sum(valor) AS valor, count(*) AS pagamentos FROM quebec.diretoria.vw_dir_pagamentos WHERE (:filial = 'Todas' OR filial = :filial) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim AND linha <> 'Fora do saldo' GROUP BY linha, grupo, natureza, natureza_desc ORDER BY valor DESC LIMIT 100"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "dir_fora",
+      "displayName": "Diretoria - fora do saldo",
+      "queryLines": [
+        "SELECT motivo_fora AS motivo, sum(valor) AS valor, count(*) AS pagamentos FROM quebec.diretoria.vw_dir_pagamentos WHERE (:filial = 'Todas' OR filial = :filial) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim AND linha = 'Fora do saldo' GROUP BY motivo_fora ORDER BY valor DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "filiais",
+      "displayName": "Filiais (opções do filtro)",
+      "queryLines": [
+        "SELECT filial FROM (SELECT 'Todas' AS filial UNION SELECT filial FROM quebec.diretoria.vw_dir_mapa UNION SELECT filial FROM quebec.diretoria.vw_dir_pagamentos) WHERE filial IS NOT NULL ORDER BY CASE WHEN filial = 'Todas' THEN 0 ELSE 1 END, filial"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_174",
+      "displayName": "Mapa de resultado",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_157",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Mapa de resultado — o que entrou, o que saiu e o saldo",
+                "**Entrou:** faturamento (notas de saída com duplicata) menos devoluções, pelo mês de emissão. **Saiu:** pagamentos feitos no mês, separados pela natureza financeira.",
+                "Empréstimos, financiamentos, compra de bens, parcelamentos e baixas sem saída de caixa **não entram no saldo** (ver conferência no fim). **Margem** = saldo ÷ receita."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 3,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_175",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_kpi_filial",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mapa_filial",
+                "query": {
+                  "datasetName": "dir_mapa",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mes_filial",
+                "query": {
+                  "datasetName": "dir_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mes_custo_filial",
+                "query": {
+                  "datasetName": "dir_mes_custo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_nat_filial",
+                "query": {
+                  "datasetName": "dir_nat",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_fora_filial",
+                "query": {
+                  "datasetName": "dir_fora",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_dir_kpi_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_dir_mapa_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_dir_mes_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_dir_mes_custo_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_dir_nat_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_dir_fora_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_176",
+            "queries": [
+              {
+                "name": "parameter_dir_kpi_data_inicio",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mapa_data_inicio",
+                "query": {
+                  "datasetName": "dir_mapa",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mes_data_inicio",
+                "query": {
+                  "datasetName": "dir_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mes_custo_data_inicio",
+                "query": {
+                  "datasetName": "dir_mes_custo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_nat_data_inicio",
+                "query": {
+                  "datasetName": "dir_nat",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_fora_data_inicio",
+                "query": {
+                  "datasetName": "dir_fora",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_dir_kpi_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_dir_mapa_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_dir_mes_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_dir_mes_custo_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_dir_nat_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_dir_fora_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Mês de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 5,
+            "y": 0,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_177",
+            "queries": [
+              {
+                "name": "parameter_dir_kpi_data_fim",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mapa_data_fim",
+                "query": {
+                  "datasetName": "dir_mapa",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mes_data_fim",
+                "query": {
+                  "datasetName": "dir_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_mes_custo_data_fim",
+                "query": {
+                  "datasetName": "dir_mes_custo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_nat_data_fim",
+                "query": {
+                  "datasetName": "dir_nat",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_dir_fora_data_fim",
+                "query": {
+                  "datasetName": "dir_fora",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_dir_kpi_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_dir_mapa_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_dir_mes_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_dir_mes_custo_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_dir_nat_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_dir_fora_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Mês até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_158",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "receita",
+                      "expression": "`receita`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "receita",
+                  "displayName": "Receita (entrou)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Receita (entrou)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_159",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "custo_total",
+                      "expression": "`custo_total`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "custo_total",
+                  "displayName": "Custos (saiu)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custos (saiu)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_160",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "saldo",
+                  "displayName": "Saldo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldo"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_161",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "margem",
+                      "expression": "`margem`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "margem",
+                  "displayName": "Margem",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Margem"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_162",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "frota",
+                      "expression": "`frota`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "frota",
+                  "displayName": "Custo de frota",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo de frota"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_163",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pessoal",
+                      "expression": "`pessoal`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pessoal",
+                  "displayName": "Custo com pessoal",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo com pessoal"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 5,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_164",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "administrativo",
+                      "expression": "`administrativo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "administrativo",
+                  "displayName": "Custo administrativo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo administrativo"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_165",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "judicial",
+                      "expression": "`judicial`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "judicial",
+                  "displayName": "Processos judiciais",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Processos judiciais"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_166",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "demais",
+                      "expression": "`demais`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "demais",
+                  "displayName": "Demais custos da operação",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Demais custos da operação"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_167",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_mapa",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "linha",
+                      "expression": "`linha`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "tipo",
+                      "expression": "`tipo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "linha",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Linha"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "tipo",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Tipo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Mapa: receita, custos e saldo",
+                "showDescription": true,
+                "description": "Receita positiva, custos negativos; o Saldo é a soma das barras"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 4,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_168",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_mapa",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "linha",
+                      "expression": "`linha`"
+                    },
+                    {
+                      "name": "valor_abs",
+                      "expression": "`valor_abs`"
+                    },
+                    {
+                      "name": "pct_receita",
+                      "expression": "`pct_receita`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "linha",
+                    "displayName": "Linha"
+                  },
+                  {
+                    "fieldName": "valor_abs",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "pct_receita",
+                    "displayName": "% da receita"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Mapa do período"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 8,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "line_169",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "receita",
+                      "expression": "`receita`"
+                    },
+                    {
+                      "name": "custo_total",
+                      "expression": "`custo_total`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "receita",
+                      "displayName": "Receita"
+                    },
+                    {
+                      "fieldName": "custo_total",
+                      "displayName": "Custos"
+                    },
+                    {
+                      "fieldName": "saldo",
+                      "displayName": "Saldo"
+                    }
+                  ],
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Receita, custos e saldo por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 16,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_170",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_mes_custo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "linha",
+                      "expression": "`linha`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "linha",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Linha"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Composição dos custos por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 16,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_171",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "receita",
+                      "expression": "`receita`"
+                    },
+                    {
+                      "name": "frota",
+                      "expression": "`frota`"
+                    },
+                    {
+                      "name": "pessoal",
+                      "expression": "`pessoal`"
+                    },
+                    {
+                      "name": "administrativo",
+                      "expression": "`administrativo`"
+                    },
+                    {
+                      "name": "judicial",
+                      "expression": "`judicial`"
+                    },
+                    {
+                      "name": "demais",
+                      "expression": "`demais`"
+                    },
+                    {
+                      "name": "custo_total",
+                      "expression": "`custo_total`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "margem",
+                      "expression": "`margem`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "mes",
+                    "displayName": "Mês"
+                  },
+                  {
+                    "fieldName": "receita",
+                    "displayName": "Receita"
+                  },
+                  {
+                    "fieldName": "frota",
+                    "displayName": "Frota"
+                  },
+                  {
+                    "fieldName": "pessoal",
+                    "displayName": "Pessoal"
+                  },
+                  {
+                    "fieldName": "administrativo",
+                    "displayName": "Administrativo"
+                  },
+                  {
+                    "fieldName": "judicial",
+                    "displayName": "Proc. judiciais"
+                  },
+                  {
+                    "fieldName": "demais",
+                    "displayName": "Demais custos"
+                  },
+                  {
+                    "fieldName": "custo_total",
+                    "displayName": "Custos"
+                  },
+                  {
+                    "fieldName": "saldo",
+                    "displayName": "Saldo"
+                  },
+                  {
+                    "fieldName": "margem",
+                    "displayName": "Margem"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Mapa mês a mês"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_172",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_nat",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "linha",
+                      "expression": "`linha`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    },
+                    {
+                      "name": "natureza",
+                      "expression": "`natureza`"
+                    },
+                    {
+                      "name": "natureza_desc",
+                      "expression": "`natureza_desc`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "pagamentos",
+                      "expression": "`pagamentos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "linha",
+                    "displayName": "Linha"
+                  },
+                  {
+                    "fieldName": "grupo",
+                    "displayName": "Grupo"
+                  },
+                  {
+                    "fieldName": "natureza",
+                    "displayName": "Natureza"
+                  },
+                  {
+                    "fieldName": "natureza_desc",
+                    "displayName": "Descrição"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "pagamentos",
+                    "displayName": "Pagamentos"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Maiores custos por natureza"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 30,
+            "width": 4,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_173",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dir_fora",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "motivo",
+                      "expression": "`motivo`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "pagamentos",
+                      "expression": "`pagamentos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "motivo",
+                    "displayName": "Motivo"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "pagamentos",
+                    "displayName": "Pagamentos"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Conferência: pagamentos fora do saldo",
+                "showDescription": true,
+                "description": "Saídas do período que não são custo da operação"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 30,
+            "width": 2,
+            "height": 8
+          }
+        }
+      ]
+    }
+  ]
+}

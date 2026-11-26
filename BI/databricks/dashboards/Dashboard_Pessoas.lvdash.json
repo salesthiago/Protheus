@@ -1,0 +1,1498 @@
+{
+  "datasets": [
+    {
+      "name": "rh_kpi",
+      "displayName": "Pessoas - KPIs",
+      "queryLines": [
+        "WITH q AS (SELECT sum(N) AS headcount, sum(CASE WHEN SIT = 'A' THEN N ELSE 0 END) AS afastados, sum(CASE WHEN SIT = 'F' THEN N ELSE 0 END) AS em_ferias FROM quebec.gold.vw_rh_quadro WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo)), d AS (SELECT sum(ADM) AS adm_periodo, sum(DEM) AS dem_periodo FROM quebec.gold.vw_rh_adm_dem WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim) SELECT q.*, d.*, try_divide(d.dem_periodo, q.headcount) AS turnover_periodo, try_divide(q.afastados, q.headcount) AS pct_afastados FROM q CROSS JOIN d"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "rh_mov",
+      "displayName": "Pessoas - movimento",
+      "queryLines": [
+        "SELECT mes, 'Admissões' AS tipo, sum(ADM) AS pessoas FROM quebec.gold.vw_rh_adm_dem WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim GROUP BY mes UNION ALL SELECT mes, 'Demissões' AS tipo, sum(DEM) AS pessoas FROM quebec.gold.vw_rh_adm_dem WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim GROUP BY mes ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "rh_fol",
+      "displayName": "Pessoas - folha",
+      "queryLines": [
+        "SELECT mes, sum(proventos) AS proventos, sum(descontos) AS descontos, sum(proventos) - sum(descontos) AS liquido FROM quebec.gold.vw_rh_folha WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim GROUP BY mes ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "rh_qcc",
+      "displayName": "Pessoas - quadro por CC",
+      "queryLines": [
+        "SELECT centro_custo, sum(N) AS pessoas, sum(CASE WHEN SIT = 'A' THEN N ELSE 0 END) AS afastados FROM quebec.gold.vw_rh_quadro WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) GROUP BY centro_custo ORDER BY pessoas DESC LIMIT 15"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "med_mes",
+      "displayName": "Saúde - por mês",
+      "queryLines": [
+        "WITH a AS (SELECT date_trunc('MONTH', dt_inicio) AS mes, count(*) AS atestados, sum(coalesce(datediff(dt_fim, dt_inicio) + 1, 1)) AS dias_atestado FROM quebec.gold.vw_med_atestados WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_inicio BETWEEN :data_inicio AND :data_fim GROUP BY 1), c AS (SELECT date_trunc('MONTH', dt_acidente) AS mes, count(*) AS acidentes, count_if(com_afastamento) AS acidentes_com_afastamento FROM quebec.gold.vw_med_acidentes WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_acidente BETWEEN :data_inicio AND :data_fim GROUP BY 1) SELECT coalesce(a.mes, c.mes) AS mes, coalesce(atestados, 0) AS atestados, coalesce(dias_atestado, 0) AS dias_atestado, coalesce(acidentes, 0) AS acidentes, coalesce(acidentes_com_afastamento, 0) AS acidentes_com_afastamento FROM a FULL OUTER JOIN c ON a.mes = c.mes ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "med_cid",
+      "displayName": "Saúde - diagnósticos",
+      "queryLines": [
+        "SELECT diagnostico, count(*) AS atestados, sum(coalesce(datediff(dt_fim, dt_inicio) + 1, 1)) AS dias FROM quebec.gold.vw_med_atestados WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_inicio BETWEEN :data_inicio AND :data_fim GROUP BY diagnostico ORDER BY atestados DESC LIMIT 10"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "rh_ccs",
+      "displayName": "Centros de custo (opções do filtro)",
+      "queryLines": [
+        "SELECT centro_custo FROM (SELECT 'Todos' AS centro_custo UNION SELECT centro_custo FROM quebec.gold.vw_rh_quadro UNION SELECT centro_custo FROM quebec.gold.vw_rh_adm_dem UNION SELECT centro_custo FROM quebec.gold.vw_rh_folha UNION SELECT centro_custo FROM quebec.gold.vw_med_atestados UNION SELECT centro_custo FROM quebec.gold.vw_med_acidentes) WHERE centro_custo IS NOT NULL ORDER BY CASE WHEN centro_custo = 'Todos' THEN 0 ELSE 1 END, centro_custo"
+      ]
+    },
+    {
+      "name": "filiais",
+      "displayName": "Filiais (opções do filtro)",
+      "queryLines": [
+        "SELECT filial FROM (SELECT 'Todas' AS filial UNION SELECT filial FROM quebec.gold.vw_rh_quadro UNION SELECT filial FROM quebec.gold.vw_rh_adm_dem UNION SELECT filial FROM quebec.gold.vw_rh_folha UNION SELECT filial FROM quebec.gold.vw_med_atestados UNION SELECT filial FROM quebec.gold.vw_med_acidentes) WHERE filial IS NOT NULL ORDER BY CASE WHEN filial = 'Todas' THEN 0 ELSE 1 END, filial"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_099",
+      "displayName": "Pessoas",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_087",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Pessoas (somente agregados, sem dados individuais)",
+                "**Turnover no período** = desligamentos no período ÷ quadro atual. **Folha:** proventos e descontos das competências fechadas.",
+                "**Saúde:** atestados e acidentes por mês, e os diagnósticos mais frequentes (pelo CID).",
+                "**Filtros:** o período vale para movimento e folha (competência) e para atestados/acidentes (data). O **quadro** é a situação de hoje e segue só filial e centro de custo."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_100",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_kpi_filial",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_mov_filial",
+                "query": {
+                  "datasetName": "rh_mov",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_fol_filial",
+                "query": {
+                  "datasetName": "rh_fol",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_qcc_filial",
+                "query": {
+                  "datasetName": "rh_qcc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_med_mes_filial",
+                "query": {
+                  "datasetName": "med_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_med_cid_filial",
+                "query": {
+                  "datasetName": "med_cid",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_rh_kpi_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_rh_mov_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_rh_fol_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_rh_qcc_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_med_mes_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_med_cid_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_098",
+            "queries": [
+              {
+                "name": "dashboards_rh_ccs_centro_custo",
+                "query": {
+                  "datasetName": "rh_ccs",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_kpi_centro_custo",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_mov_centro_custo",
+                "query": {
+                  "datasetName": "rh_mov",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_fol_centro_custo",
+                "query": {
+                  "datasetName": "rh_fol",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_qcc_centro_custo",
+                "query": {
+                  "datasetName": "rh_qcc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_med_mes_centro_custo",
+                "query": {
+                  "datasetName": "med_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_med_cid_centro_custo",
+                "query": {
+                  "datasetName": "med_cid",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo",
+                    "queryName": "dashboards_rh_ccs_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_rh_kpi_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_rh_mov_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_rh_fol_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_rh_qcc_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_med_mes_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_med_cid_centro_custo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Centro de custo"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_101",
+            "queries": [
+              {
+                "name": "parameter_rh_kpi_data_inicio",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_mov_data_inicio",
+                "query": {
+                  "datasetName": "rh_mov",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_fol_data_inicio",
+                "query": {
+                  "datasetName": "rh_fol",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_med_mes_data_inicio",
+                "query": {
+                  "datasetName": "med_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_med_cid_data_inicio",
+                "query": {
+                  "datasetName": "med_cid",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_rh_kpi_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_rh_mov_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_rh_fol_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_med_mes_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_med_cid_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_102",
+            "queries": [
+              {
+                "name": "parameter_rh_kpi_data_fim",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_mov_data_fim",
+                "query": {
+                  "datasetName": "rh_mov",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_rh_fol_data_fim",
+                "query": {
+                  "datasetName": "rh_fol",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_med_mes_data_fim",
+                "query": {
+                  "datasetName": "med_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_med_cid_data_fim",
+                "query": {
+                  "datasetName": "med_cid",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_rh_kpi_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_rh_mov_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_rh_fol_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_med_mes_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_med_cid_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_088",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "headcount",
+                      "expression": "`headcount`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "headcount",
+                  "displayName": "Quadro atual",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Quadro atual"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_089",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "afastados",
+                      "expression": "`afastados`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "afastados",
+                  "displayName": "Afastados",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Afastados"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_090",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "em_ferias",
+                      "expression": "`em_ferias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "em_ferias",
+                  "displayName": "Em férias",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Em férias"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_091",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_afastados",
+                      "expression": "`pct_afastados`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_afastados",
+                  "displayName": "% afastados",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% afastados"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_092",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "turnover_periodo",
+                      "expression": "`turnover_periodo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "turnover_periodo",
+                  "displayName": "Turnover no período",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Turnover no período"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_093",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_mov",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "pessoas",
+                      "expression": "`pessoas`"
+                    },
+                    {
+                      "name": "tipo",
+                      "expression": "`tipo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "pessoas",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pessoas"
+                },
+                "color": {
+                  "fieldName": "tipo",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Movimento"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Admissões × demissões por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "line_094",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_fol",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "proventos",
+                      "expression": "`proventos`"
+                    },
+                    {
+                      "name": "descontos",
+                      "expression": "`descontos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "proventos",
+                      "displayName": "Proventos"
+                    },
+                    {
+                      "fieldName": "descontos",
+                      "displayName": "Descontos"
+                    }
+                  ],
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Folha por competência"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 7,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_095",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_qcc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "pessoas",
+                      "expression": "`pessoas`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "pessoas",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pessoas"
+                },
+                "y": {
+                  "fieldName": "centro_custo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Centro de custo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Quadro por centro de custo (top 15)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "line_096",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "med_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "atestados",
+                      "expression": "`atestados`"
+                    },
+                    {
+                      "name": "acidentes",
+                      "expression": "`acidentes`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "atestados",
+                      "displayName": "Atestados"
+                    },
+                    {
+                      "fieldName": "acidentes",
+                      "displayName": "Acidentes"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Atestados e acidentes por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 13,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_097",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "med_cid",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "diagnostico",
+                      "expression": "`diagnostico`"
+                    },
+                    {
+                      "name": "atestados",
+                      "expression": "`atestados`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "atestados",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Atestados"
+                },
+                "y": {
+                  "fieldName": "diagnostico",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Diagnóstico"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Diagnósticos mais frequentes nos atestados"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 20,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ]
+    }
+  ]
+}

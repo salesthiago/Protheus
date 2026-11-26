@@ -18,17 +18,30 @@ Static __oArqTemp	:= Nil	//Variavel utilizada para a consulta padrão DX6GRP
 Static oMBrowse     := Nil
 Static lF10Exec     := .T.
 Static aParBal      := nil      // -- Será inicializada na funcao no Activate do Model (Devido a Error log se executado em MDI )--/
+Static dDtSessao    := Nil      // Data (Date()) em que a rotina foi aberta - controle da virada do dia
+Static oTmrVira     := Nil      // Timer que encerra a sessao na virada do dia (00h)
 /** {Protheus.doc} OGA190
 Rotina para pesagem avulsas em balanças cadastradas
 
 @param:     Nil
 @author:    Vinicius Becher Pagung
 @since:     08/04/2016
-@Uso:       SIGAARM - Origenação de Grãos
+@Uso:       SIGAARM - Originação de Grãos
 */
 user Function OGA190Q()
 	Local bKeyF10       := SetKey( VK_F10, { || OGA190VKF10(NJH->NJH_CODPAV) 			} )
 	Local bKeyF12       := SetKey( VK_F12, { || aParBal:= AGRX003E( .t., 'OGA050001' )   } )
+
+	dDtSessao := Date()
+
+	// Data base diferente do dia real: obriga novo login para evitar ticket com data errada
+	If dDataBase <> dDtSessao
+		Final( "Data base desatualizada", "A data base (" + DToC( dDataBase ) + ") difere da data atual (" + DToC( dDtSessao ) + "). Efetue novo login no Protheus." )
+	EndIf
+
+	// Verifica a cada 1 minuto se o dia virou; se virou, encerra a sessao (obriga novo login)
+	oTmrVira := TTimer():New( 60000, { || fVerVira() }, GetWndDefault() )
+	oTmrVira:Activate()
 
 	oMBrowse := FWMBrowse():New()
 	oMBrowse:SetAlias( "NJH" )
@@ -41,6 +54,10 @@ user Function OGA190Q()
 	oMBrowse:AddLegend( "NJH_STATUS=='4'", "BR_CANCEL"  , STR0037) //"Cancelada"
 	oMBrowse:DisableDetails()
 	oMBrowse:Activate()
+
+	If oTmrVira <> Nil
+		oTmrVira:DeActivate()
+	EndIf
 
 	SetKey( VK_F10, bKeyF10 )
 	SetKey( VK_F12, bKeyF12 )
@@ -212,11 +229,6 @@ Static Function GrvModelo( oModel )
 
 	EndIf
 
-	If nOperation == MODEL_OPERATION_INSERT .And. Empty( oModel:GetValue( "NJHUNICO", "NJH_DATA" ) )
-		FwDateUpd(.F.) //garante dDataBase atualizada na virada do dia antes de gravar a data do ticket (NJH_DATA fica "presa" na data de abertura da tela se nao for atualizada aqui)
-		oModel:SetValue( "NJHUNICO", "NJH_DATA", dDataBase )
-	EndIf
-
 	FWFormCommit( oModel )
 
 	NJ0->(DbSetOrder(1))
@@ -334,7 +346,7 @@ Static Function OGA190PESA( oModel, cOrigem )
 
 		nPeso := 0
 		AGRX03AQ( @nPeso, .t., aParBal, /*cMask*/,@lPesagManu, nPeso1, nPeso2 )
-		FwDateUpd(.F.) //atualiza database sistema na virada do dia
+		FwDateUpd(.F.,.F.) //atualiza database sistema na virada do dia
 
 		If nPeso > 0
 
@@ -567,6 +579,27 @@ Static Function fFimModelo( oModel )
 
 Return(.t.)
 
+/** {Protheus.doc} fVerVira
+Executada pelo timer a cada 1 minuto. Se o dia virou desde a abertura da rotina,
+encerra a sessao do Protheus obrigando novo login (dDataBase passa a ser a data correta).
+Nao encerra no meio de uma pesagem/tela de inclusao: aguarda o proximo ciclo do timer.
+*/
+Static Function fVerVira()
+
+	If dDtSessao == Nil .Or. Date() == dDtSessao
+		Return Nil
+	EndIf
+
+	// Tela de pesagem/inclusao aberta: aguarda fechar para nao perder o ticket
+	If !lF10Exec .Or. IsInCallStack( "OGA190PESA" ) .Or. IsInCallStack( "AGRX03AQ" )
+		Return Nil
+	EndIf
+
+	oTmrVira:DeActivate()
+	Final( "Virada do dia", "Sessao encerrada automaticamente na virada do dia (" + DToC( Date() ) + "). Efetue novo login no Protheus." )
+
+Return Nil
+
 /** {Protheus.doc} OGA190REL
 Função que executa o relatório OGR190
 
@@ -765,7 +798,7 @@ static Function AGRX03AQ( nPeso, lMostra, aBal, cMask, lPesagManu, nPeso1, nPeso
 		Else
 			If __lPsAuto
 				nPeso 		:= AGRX03BQ( )
-				nPesoCapt	:= nPeso    //Tratamento para Identificar se Peso Foi Digitado para Qdo o tipo de Pesagem esta ambos
+				nPesoCapt	:= nPeso    //Tratamento para Identificar se Peso Foi Digitado para Qdo o tipo de Pesagem está ambos
 			EndIf
 		EndIf
 	EndIf
@@ -800,16 +833,21 @@ static Function AGRX03BQ( )
 	Private nSeq		:= 1
 	Private nCap		:= 0
 	Private oSay		:= Nil
-	Private _nPsosVale1	:= 2   // Numero de capturas iguais para considerar o Peso (ex. nPesoVld1 := 2 ,
+	Private nPsosVale1	:= 2   // Numero de capturas iguais para considerar o Peso (ex. nPesoVld1 := 2 ,
 
-	If DX5->(FieldPos("DX5_LERVEZ"))
-		_nPsosVale1 := DX5->( DX5_LERVEZ )
+	If DX5->(FieldPos("DX5_LERVEZ")) > 0
+		nPsosVale1 := DX5->( DX5_LERVEZ )
 	Endif
-	_nPsosVale1 := Max( 1, _nPsosVale1 )  // garante ao menos 1 leitura; DX5_LERVEZ=0 causava array vazio
 
-	For nFor01 := 1 to   _nPsosVale1    //adiiconando a qtd de pensagesn que são necessarias para considerar 1 peso valido
+	//O IF abaixo foi colocado conforme conversa com o Joaquim, pois os clientes estavam deixando o campo
+	//DX5_LERVEZ zerado, ocasionando erro na balança
+	If nPsosVale1 < 2
+		nPsosVale1 := 2
+	EndIf
+
+	For nFor01 := 1 to   nPsosVale1    //adiiconando a qtd de pensagesn que são necessarias para considerar 1 peso valido
 		aAdd( aCap, 0 )
-	Next _nPsosVale1
+	Next nPosVale1
 
 	oDlg 		:= TDialog():New( 000, 000, 090, 320, cTitulo, , , , , CLR_BLACK, CLR_WHITE, , , .t. )
 	oTimer 		:= TTimer():New( 0, { || AGRX03FQ( ),oTimer:Deactivate(), oDlg:End()}, oDlg )
@@ -847,7 +885,7 @@ static Function AGRX03FQ(  )
 	IF lEhTeste
 		Return( .t. )
 	EndIF
-	// Verifica se o Ultimo Peso Capturado corresponde aos Outros Pesos  Capturados
+	// Verifica se o Ultimo Peso Capturado corresponde aos Outros Pesos já Capturados
 	// Tratando com StrTran é para o Caso de Haver uma mascara com decimais
 	// desta forma garanto que a funcao nAnd não retorne um resultado
 	// errado poi a nAnd nao trabalha com numeros com casas decimais.
@@ -862,7 +900,7 @@ static Function AGRX03FQ(  )
 
 			nPesoAux  :=  Val(StrTran(StrTran(cvaltochar( acap[ nFor01     ] ),',',''),'.',''))
 			nLastpeso :=  Val(StrTran(StrTran(cvaltochar( acap[ nPsosVale1 ] ),',',''),'.',''))
-			If nOperacao == 1 //nivel binario
+			If nOperacao == 1 //nível binario
 				IF .not. nAnd( nLastPeso, nPesoAux ) == nLastPeso
 					lPesoOk := .f.
 					Exit
@@ -1017,13 +1055,12 @@ static Function AGRX03DQ(cPorta, cBaudRate, cParity, cData, cStop, cTimeOut, cSc
 				Next nFor01
 
 				//if len(cConteudo) > 150
-				//if substr(cconteudo,8,8) <> SUBSTR(cconteudo,len(cconteudo)-13,8)  //substr(cConteudo,354,7)
-				if substr(cconteudo,2,6) <> SUBSTR(cconteudo,len(cconteudo)-4, 5)  //substr(cConteudo,354,7)
+				if substr(cconteudo,8,8) <> SUBSTR(cconteudo,len(cconteudo)-13,8)  //substr(cConteudo,354,7)
 					cConteudo := ""
 				endif
 				//endif
 
-				if val(substr(cconteudo,2,6)) >= 90000 .or. val(substr(cconteudo,2,6)) <= 500
+				if val(substr(cconteudo,8,8)) >= 90000 .or. val(substr(cconteudo,8,8)) <= 500
 					cConteudo := ""
 				endif
 

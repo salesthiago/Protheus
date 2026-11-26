@@ -6,7 +6,7 @@
 			"request": "launch",
 			"name": "Smart Client Web Debug - TESTE",
 			"program": "${command:AskForProgramName}",
-			"smartclientUrl": "https://177.136.201.210:1080/webapp/",
+			"smartclientUrl": "https://177.136.201.210:1071/webapp/",
 			"webNavigator": "/usr/bin/google-chrome",
 			"cwb": "${workspaceFolder}",
 			"isMultiSession": true,

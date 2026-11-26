@@ -1,0 +1,3466 @@
+{
+  "datasets": [
+    {
+      "name": "fin_kpi",
+      "displayName": "Financeiro - KPIs",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_fin_kpi"
+      ]
+    },
+    {
+      "name": "fin_aging",
+      "displayName": "Financeiro - aging",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_fin_aging ORDER BY faixa"
+      ]
+    },
+    {
+      "name": "fin_fluxo",
+      "displayName": "Financeiro - fluxo semanal",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_fin_fluxo_semanal"
+      ]
+    },
+    {
+      "name": "fin_pareto",
+      "displayName": "Financeiro - Pareto fornecedores",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_fin_pareto_fornecedor ORDER BY ranking"
+      ]
+    },
+    {
+      "name": "fin_pag",
+      "displayName": "Financeiro - pagamentos por mes",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_fin_pagamentos_mes ORDER BY mes"
+      ]
+    },
+    {
+      "name": "apr_kpi",
+      "displayName": "Aprovação - KPIs",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_apr_kpi"
+      ]
+    },
+    {
+      "name": "apr_fila",
+      "displayName": "Aprovação - por aprovador",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_apr_fila_aprovador ORDER BY valor DESC"
+      ]
+    },
+    {
+      "name": "apr_idade",
+      "displayName": "Aprovação - idade",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_apr_idade ORDER BY faixa_idade"
+      ]
+    },
+    {
+      "name": "com_lt",
+      "displayName": "Compras - lead time",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_com_leadtime_mes ORDER BY mes"
+      ]
+    },
+    {
+      "name": "com_sc",
+      "displayName": "Compras - SCs por mês",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_com_sc_mes ORDER BY mes"
+      ]
+    },
+    {
+      "name": "com_nf",
+      "displayName": "Compras - notas por mês",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_com_notas_mes WHERE mes >= add_months(current_date(), -24) ORDER BY mes"
+      ]
+    },
+    {
+      "name": "mnt_kpi",
+      "displayName": "Frota - KPIs",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_mnt_kpi"
+      ]
+    },
+    {
+      "name": "mnt_mes",
+      "displayName": "Frota - OS por mês",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_mnt_os_mes WHERE mes >= add_months(current_date(), -24) ORDER BY mes"
+      ]
+    },
+    {
+      "name": "mnt_fam",
+      "displayName": "Frota - custo por família",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_mnt_custo_familia ORDER BY custo DESC LIMIT 15"
+      ]
+    },
+    {
+      "name": "mnt_bem",
+      "displayName": "Frota - custo por bem",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_mnt_custo_bem ORDER BY custo DESC LIMIT 100"
+      ]
+    },
+    {
+      "name": "mnt_km",
+      "displayName": "Frota - custo x km",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_mnt_custo_bem WHERE km_rodados > 0"
+      ]
+    },
+    {
+      "name": "mnt_atip",
+      "displayName": "Frota - OS atípicas",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_mnt_os_atipicas ORDER BY z_score DESC LIMIT 100"
+      ]
+    },
+    {
+      "name": "est_kpi",
+      "displayName": "Estoque - KPIs",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_kpi"
+      ]
+    },
+    {
+      "name": "est_abc",
+      "displayName": "Estoque - curva ABC",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_abc ORDER BY classe"
+      ]
+    },
+    {
+      "name": "est_fech",
+      "displayName": "Estoque - fechamentos",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_fechamentos ORDER BY mes"
+      ]
+    },
+    {
+      "name": "est_aj",
+      "displayName": "Estoque - ajustes",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_ajustes_mes ORDER BY mes"
+      ]
+    },
+    {
+      "name": "est_par",
+      "displayName": "Estoque - itens parados",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_parados ORDER BY valor DESC LIMIT 100"
+      ]
+    },
+    {
+      "name": "rh_kpi",
+      "displayName": "Pessoas - KPIs",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_rh_kpi"
+      ]
+    },
+    {
+      "name": "rh_mov",
+      "displayName": "Pessoas - movimento",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_rh_movimento_mes WHERE mes >= add_months(current_date(), -13) ORDER BY mes"
+      ]
+    },
+    {
+      "name": "rh_fol",
+      "displayName": "Pessoas - folha",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_rh_folha_mes ORDER BY mes"
+      ]
+    },
+    {
+      "name": "rh_qcc",
+      "displayName": "Pessoas - quadro por CC",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_rh_quadro_cc ORDER BY pessoas DESC LIMIT 15"
+      ]
+    },
+    {
+      "name": "med_mes",
+      "displayName": "Saúde - por mês",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_med_mes ORDER BY mes"
+      ]
+    },
+    {
+      "name": "med_cid",
+      "displayName": "Saúde - diagnósticos",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_med_cid ORDER BY atestados DESC LIMIT 10"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_014",
+      "displayName": "Financeiro",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_001",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Contas a pagar",
+                "**Como ler:** os títulos **provisórios (PR)** são previsões e ficam separados do saldo **efetivo**. O *aging* mostra quanto do saldo está vencido e há quanto tempo.",
+                "O **HHI** mede a concentração da dívida por fornecedor (0 a 10.000; acima de 2.500 = alta). O **Pareto** mostra quantos fornecedores somam 80% do saldo (classe A)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_002",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "saldo_efetivo",
+                      "expression": "`saldo_efetivo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "saldo_efetivo",
+                  "displayName": "Saldo efetivo a pagar",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldo efetivo a pagar"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_003",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "saldo_vencido",
+                      "expression": "`saldo_vencido`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "saldo_vencido",
+                  "displayName": "Saldo vencido",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldo vencido"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_004",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_vencido",
+                      "expression": "`pct_vencido`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_vencido",
+                  "displayName": "% vencido",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% vencido"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_005",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "saldo_provisorio",
+                      "expression": "`saldo_provisorio`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "saldo_provisorio",
+                  "displayName": "Provisórios (PR)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Provisórios (PR)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_006",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "qtd_titulos",
+                      "expression": "`qtd_titulos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "qtd_titulos",
+                  "displayName": "Títulos em aberto",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Títulos em aberto"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_007",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "hhi_fornecedores",
+                      "expression": "`hhi_fornecedores`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "hhi_fornecedores",
+                  "displayName": "HHI fornecedores",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HHI fornecedores"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_008",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_aging",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "faixa",
+                      "expression": "`faixa`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "faixa",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Faixa"
+                },
+                "y": {
+                  "fieldName": "saldo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Saldo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "grupo",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Grupo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Aging do saldo",
+                "showDescription": true,
+                "description": "Saldo por faixa de vencimento, separando provisórios"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_009",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_fluxo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "semana",
+                      "expression": "`semana`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "semana",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Semana"
+                },
+                "y": {
+                  "fieldName": "saldo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Saldo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "grupo",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Grupo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Vencimentos das próximas 12 semanas"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_010",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pareto",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "saldo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Saldo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "fornecedor",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Fornecedor"
+                },
+                "color": {
+                  "fieldName": "classe",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Classe ABC"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 30 fornecedores (saldo efetivo)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_011",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pareto",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "ranking",
+                      "expression": "`ranking`"
+                    },
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "pct",
+                      "expression": "`pct`"
+                    },
+                    {
+                      "name": "pct_acumulado",
+                      "expression": "`pct_acumulado`"
+                    },
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "ranking",
+                    "displayName": "#"
+                  },
+                  {
+                    "fieldName": "fornecedor",
+                    "displayName": "Fornecedor"
+                  },
+                  {
+                    "fieldName": "saldo",
+                    "displayName": "Saldo"
+                  },
+                  {
+                    "fieldName": "pct",
+                    "displayName": "% do total"
+                  },
+                  {
+                    "fieldName": "pct_acumulado",
+                    "displayName": "% acumulado"
+                  },
+                  {
+                    "fieldName": "classe",
+                    "displayName": "Classe"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pareto de fornecedores"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 12,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "line_012",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pag",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor_pago",
+                      "expression": "`valor_pago`"
+                    },
+                    {
+                      "name": "media_movel_3m",
+                      "expression": "`media_movel_3m`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "valor_pago",
+                      "displayName": "Pago no mês"
+                    },
+                    {
+                      "fieldName": "media_movel_3m",
+                      "displayName": "Média móvel 3m"
+                    }
+                  ],
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pagamentos por mês e média móvel de 3 meses"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 20,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "line_013",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pag",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "pct_pago_em_atraso",
+                      "expression": "`pct_pago_em_atraso`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "pct_pago_em_atraso",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "% em atraso",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% pago após o vencimento",
+                "showDescription": true,
+                "description": "Parcela do valor pago depois do vencimento real"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 20,
+            "width": 3,
+            "height": 7
+          }
+        }
+      ]
+    },
+    {
+      "name": "pg_026",
+      "displayName": "Compras",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_015",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Compras e aprovação",
+                "**Fila de aprovação:** pedidos parados na alçada, por aprovador e por idade. Pedido parado há mais de 7 dias costuma travar entrega.",
+                "**Lead time:** dias entre a solicitação de compra e o pedido. A **mediana** mostra o caso típico; o **P90**, os 10% mais lentos. Se o P90 se afasta da mediana, há gargalo em casos específicos."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_016",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pedidos_pendentes",
+                      "expression": "`pedidos_pendentes`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pedidos_pendentes",
+                  "displayName": "Pedidos aguardando aprovação",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos aguardando aprovação"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_017",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valor_pendente",
+                      "expression": "`valor_pendente`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valor_pendente",
+                  "displayName": "Valor aguardando aprovação",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor aguardando aprovação"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_018",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "idade_mediana_dias",
+                      "expression": "`idade_mediana_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "idade_mediana_dias",
+                  "displayName": "Idade mediana (dias)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Idade mediana (dias)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_019",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pendentes_mais_7_dias",
+                      "expression": "`pendentes_mais_7_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pendentes_mais_7_dias",
+                  "displayName": "Parados > 7 dias",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Parados > 7 dias"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_020",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_fila",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "aprovador",
+                      "expression": "`aprovador`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "aprovador",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Aprovador"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor pendente por aprovador"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_021",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_fila",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "aprovador",
+                      "expression": "`aprovador`"
+                    },
+                    {
+                      "name": "pedidos",
+                      "expression": "`pedidos`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "idade_media_dias",
+                      "expression": "`idade_media_dias`"
+                    },
+                    {
+                      "name": "idade_max_dias",
+                      "expression": "`idade_max_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "aprovador",
+                    "displayName": "Aprovador"
+                  },
+                  {
+                    "fieldName": "pedidos",
+                    "displayName": "Pedidos"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "idade_media_dias",
+                    "displayName": "Idade média (dias)"
+                  },
+                  {
+                    "fieldName": "idade_max_dias",
+                    "displayName": "Mais antigo (dias)"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Fila por aprovador"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_022",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_idade",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "faixa_idade",
+                      "expression": "`faixa_idade`"
+                    },
+                    {
+                      "name": "pedidos",
+                      "expression": "`pedidos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "faixa_idade",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Idade"
+                },
+                "y": {
+                  "fieldName": "pedidos",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pedidos"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos pendentes por idade"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "line_023",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "com_lt",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "mediana_dias",
+                      "expression": "`mediana_dias`"
+                    },
+                    {
+                      "name": "p90_dias",
+                      "expression": "`p90_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "mediana_dias",
+                      "displayName": "Mediana"
+                    },
+                    {
+                      "fieldName": "p90_dias",
+                      "displayName": "P90"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lead time SC → pedido (dias)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 12,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_024",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "com_sc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "itens",
+                      "expression": "`itens`"
+                    },
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "itens",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Itens"
+                },
+                "color": {
+                  "fieldName": "status",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Status"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Itens de solicitação por mês e status"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_025",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "com_nf",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Notas de entrada por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 18,
+            "width": 3,
+            "height": 6
+          }
+        }
+      ]
+    },
+    {
+      "name": "pg_039",
+      "displayName": "Frota",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_027",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Manutenção de frota (últimos 12 meses nos indicadores)",
+                "**MTTR:** tempo mediano entre abrir e terminar a OS. **Custo × km:** cada ponto é um bem; quem está acima da nuvem gasta mais por km rodado que os demais.",
+                "**OS atípicas:** custo mais de 3 desvios-padrão acima da média do mesmo serviço (z-score > 3). Vale auditar."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_028",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "os_12m",
+                      "expression": "`os_12m`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "os_12m",
+                  "displayName": "OS abertas em 12 meses",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "OS abertas em 12 meses"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_029",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "custo_12m",
+                      "expression": "`custo_12m`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "custo_12m",
+                  "displayName": "Custo peças + terceiros",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo peças + terceiros"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_030",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "os_abertas",
+                      "expression": "`os_abertas`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "os_abertas",
+                  "displayName": "OS não terminadas",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "OS não terminadas"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_031",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mttr_mediano_dias",
+                      "expression": "`mttr_mediano_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "mttr_mediano_dias",
+                  "displayName": "MTTR mediano (dias)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "MTTR mediano (dias)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_032",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "bens_atendidos",
+                      "expression": "`bens_atendidos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "bens_atendidos",
+                  "displayName": "Bens atendidos",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Bens atendidos"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_033",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "qtd_os",
+                      "expression": "`qtd_os`"
+                    },
+                    {
+                      "name": "tipo_manutencao",
+                      "expression": "`tipo_manutencao`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "qtd_os",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "OS"
+                },
+                "color": {
+                  "fieldName": "tipo_manutencao",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Tipo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "OS por mês e tipo de manutenção"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_034",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    },
+                    {
+                      "name": "tipo_manutencao",
+                      "expression": "`tipo_manutencao`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "custo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "tipo_manutencao",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Tipo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo por mês e tipo de manutenção"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_035",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_fam",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "familia",
+                      "expression": "`familia`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "custo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "familia",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Família"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo por família de bem"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "scatter_036",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_km",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "km_rodados",
+                      "expression": "`km_rodados`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "scatter",
+              "encodings": {
+                "x": {
+                  "fieldName": "km_rodados",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Km rodados (12m)"
+                },
+                "y": {
+                  "fieldName": "custo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo (12m)"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo × km rodados por bem"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 11,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_037",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_bem",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "bem",
+                      "expression": "`bem`"
+                    },
+                    {
+                      "name": "bem_nome",
+                      "expression": "`bem_nome`"
+                    },
+                    {
+                      "name": "familia",
+                      "expression": "`familia`"
+                    },
+                    {
+                      "name": "qtd_os",
+                      "expression": "`qtd_os`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    },
+                    {
+                      "name": "km_rodados",
+                      "expression": "`km_rodados`"
+                    },
+                    {
+                      "name": "custo_por_km",
+                      "expression": "`custo_por_km`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "bem",
+                    "displayName": "Bem"
+                  },
+                  {
+                    "fieldName": "bem_nome",
+                    "displayName": "Descrição"
+                  },
+                  {
+                    "fieldName": "familia",
+                    "displayName": "Família"
+                  },
+                  {
+                    "fieldName": "qtd_os",
+                    "displayName": "OS"
+                  },
+                  {
+                    "fieldName": "custo",
+                    "displayName": "Custo"
+                  },
+                  {
+                    "fieldName": "km_rodados",
+                    "displayName": "Km"
+                  },
+                  {
+                    "fieldName": "custo_por_km",
+                    "displayName": "R$/km"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Bens com maior custo"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_038",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_atip",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "OS",
+                      "expression": "`OS`"
+                    },
+                    {
+                      "name": "bem_nome",
+                      "expression": "`bem_nome`"
+                    },
+                    {
+                      "name": "servico",
+                      "expression": "`servico`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    },
+                    {
+                      "name": "media_servico",
+                      "expression": "`media_servico`"
+                    },
+                    {
+                      "name": "z_score",
+                      "expression": "`z_score`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "OS",
+                    "displayName": "OS"
+                  },
+                  {
+                    "fieldName": "bem_nome",
+                    "displayName": "Bem"
+                  },
+                  {
+                    "fieldName": "servico",
+                    "displayName": "Serviço"
+                  },
+                  {
+                    "fieldName": "custo",
+                    "displayName": "Custo"
+                  },
+                  {
+                    "fieldName": "media_servico",
+                    "displayName": "Média do serviço"
+                  },
+                  {
+                    "fieldName": "z_score",
+                    "displayName": "z"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "OS com custo atípico (z-score > 3)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 18,
+            "width": 3,
+            "height": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "pg_051",
+      "displayName": "Estoque",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_040",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Almoxarifado",
+                "**Curva ABC:** poucos itens (classe A) concentram 80% do valor e merecem controle mais rígido. **Parado:** item com saldo e sem saída há mais de 180 dias (ou nunca); é capital imobilizado.",
+                "**Saldo negativo** indica movimento fora de ordem ou erro de lançamento, e distorce o custo médio."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_041",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valor_estoque",
+                      "expression": "`valor_estoque`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valor_estoque",
+                  "displayName": "Valor em estoque",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor em estoque"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_042",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valor_parado_180d",
+                      "expression": "`valor_parado_180d`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valor_parado_180d",
+                  "displayName": "Parado > 180 dias",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Parado > 180 dias"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_043",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_parado",
+                      "expression": "`pct_parado`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_parado",
+                  "displayName": "% parado",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% parado"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_044",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "itens_saldo_negativo",
+                      "expression": "`itens_saldo_negativo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "itens_saldo_negativo",
+                  "displayName": "Saldos negativos",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldos negativos"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_045",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "produtos",
+                      "expression": "`produtos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "produtos",
+                  "displayName": "Produtos",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Produtos"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_046",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_abc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "classe",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Classe"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Curva ABC: valor por classe"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_047",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_abc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    },
+                    {
+                      "name": "produtos",
+                      "expression": "`produtos`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "pct_valor",
+                      "expression": "`pct_valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "classe",
+                    "displayName": "Classe"
+                  },
+                  {
+                    "fieldName": "produtos",
+                    "displayName": "Produtos"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "pct_valor",
+                    "displayName": "% do valor"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Curva ABC"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "line_048",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_fech",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor do estoque nos fechamentos"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_049",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_aj",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "ajuste_entrada",
+                      "expression": "`ajuste_entrada`"
+                    },
+                    {
+                      "name": "ajuste_saida",
+                      "expression": "`ajuste_saida`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "ajuste_entrada",
+                      "displayName": "Entrada (sobra)"
+                    },
+                    {
+                      "fieldName": "ajuste_saida",
+                      "displayName": "Saída (perda)"
+                    }
+                  ],
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Ajustes de estoque por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_050",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_par",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "produto",
+                      "expression": "`produto`"
+                    },
+                    {
+                      "name": "descricao",
+                      "expression": "`descricao`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    },
+                    {
+                      "name": "armazem",
+                      "expression": "`armazem`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "dias_sem_saida",
+                      "expression": "`dias_sem_saida`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "produto",
+                    "displayName": "Produto"
+                  },
+                  {
+                    "fieldName": "descricao",
+                    "displayName": "Descrição"
+                  },
+                  {
+                    "fieldName": "grupo",
+                    "displayName": "Grupo"
+                  },
+                  {
+                    "fieldName": "armazem",
+                    "displayName": "Armazém"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "dias_sem_saida",
+                    "displayName": "Dias sem saída"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Itens parados de maior valor"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 11,
+            "width": 4,
+            "height": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "pg_063",
+      "displayName": "Pessoas",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_052",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Pessoas (somente agregados, sem dados individuais)",
+                "**Turnover 12m** = desligamentos dos últimos 12 meses ÷ quadro atual. **Folha:** proventos e descontos das competências fechadas.",
+                "**Saúde:** atestados e acidentes por mês, e os diagnósticos mais frequentes (pelo CID)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_053",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "headcount",
+                      "expression": "`headcount`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "headcount",
+                  "displayName": "Quadro atual",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Quadro atual"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_054",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "afastados",
+                      "expression": "`afastados`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "afastados",
+                  "displayName": "Afastados",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Afastados"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_055",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "em_ferias",
+                      "expression": "`em_ferias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "em_ferias",
+                  "displayName": "Em férias",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Em férias"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_056",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_afastados",
+                      "expression": "`pct_afastados`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_afastados",
+                  "displayName": "% afastados",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% afastados"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_057",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "turnover_12m",
+                      "expression": "`turnover_12m`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "turnover_12m",
+                  "displayName": "Turnover 12 meses",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Turnover 12 meses"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_058",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_mov",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "admissoes",
+                      "expression": "`admissoes`"
+                    },
+                    {
+                      "name": "demissoes",
+                      "expression": "`demissoes`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "admissoes",
+                      "displayName": "Admissões"
+                    },
+                    {
+                      "fieldName": "demissoes",
+                      "displayName": "Demissões"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Admissões × demissões por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "line_059",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_fol",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "proventos",
+                      "expression": "`proventos`"
+                    },
+                    {
+                      "name": "descontos",
+                      "expression": "`descontos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "proventos",
+                      "displayName": "Proventos"
+                    },
+                    {
+                      "fieldName": "descontos",
+                      "displayName": "Descontos"
+                    }
+                  ],
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Folha por competência"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_060",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "rh_qcc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "pessoas",
+                      "expression": "`pessoas`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "pessoas",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pessoas"
+                },
+                "y": {
+                  "fieldName": "centro_custo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Centro de custo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Quadro por centro de custo (top 15)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "line_061",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "med_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "atestados",
+                      "expression": "`atestados`"
+                    },
+                    {
+                      "name": "acidentes",
+                      "expression": "`acidentes`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "atestados",
+                      "displayName": "Atestados"
+                    },
+                    {
+                      "fieldName": "acidentes",
+                      "displayName": "Acidentes"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Atestados e acidentes por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 11,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_062",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "med_cid",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "diagnostico",
+                      "expression": "`diagnostico`"
+                    },
+                    {
+                      "name": "atestados",
+                      "expression": "`atestados`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "atestados",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Atestados"
+                },
+                "y": {
+                  "fieldName": "diagnostico",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Diagnóstico"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Diagnósticos mais frequentes nos atestados"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 18,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ]
+    }
+  ]
+}

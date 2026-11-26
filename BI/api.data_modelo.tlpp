@@ -1,0 +1,181 @@
+#INCLUDE "tlpp-core.th"
+#INCLUDE "FWMVCDEF.CH"
+#INCLUDE "FWMVCDEF.CH"
+#INCLUDE 'PROTHEUS.CH'
+#INCLUDE 'TOPCONN.CH'
+#INCLUDE 'TBICONN.CH'
+#Include "TOTVS.ch"
+
+namespace IntegraApiA2
+
+/*/{Protheus.doc} PlanejamentoData
+    (long_description)
+    @author Lucas Ávila 
+    @since 15/10/2024
+    @version version
+    /*/
+Class IntegraApiA2Data from FWAdapterBaseV2
+	Public Data oHashFields	as Object
+
+	Public method new() as Object
+	Public method get()
+	
+EndClass
+
+
+Method new(cVerb as Character) as Object Class IntegraApiA2Data
+	_Super:new(cVerb, .T.)
+Return Self
+
+Method Get(nPage as Numeric, nPageSize as Numeric, cFilter as Character,cFields as Character, cSort as Character, ;
+		cTable as Character, cModo as Character,cGrupo as Character, cFilGet as Character, cIntegraApiA2ID as Character,) Class IntegraApiA2Data
+
+	Local aArea as Array
+	Local cWhere as Character
+	Local aFilter as Array
+	lOCAL aMontaFilter as Array
+	Local nX as Numeric
+
+	if cModo == "table"
+		RpcClearEnv()
+		RpcSetType( 3 )
+		lConect := RpcSetEnv(cGrupo,cFilGet  )
+
+		aFilter := {}
+
+		If Empty(cIntegraApiA2ID)
+			cWhere := " D_E_L_E_T_='' " + iif("SB1" $ cTable,"AND B1_MSBLQL = '2' ","")
+		Endif
+
+		aArea := FwGetArea()
+
+		AddMapFields(Self, cTable, cFields, cModo)
+
+		if!Empty(cFilter)
+			aMontaFilter := StrTokArr(cFilter, ",")
+			For nX := 1 to Len(aMontaFilter)
+				aAdd(aFilter,{"FILTER",aMontaFilter[nX]})
+			Next
+			::setUrlFilter(aFilter)
+		Endif
+
+		if!Empty(cFields)
+			::SetFields(cFields)
+		Endif
+
+		if!Empty(cSort)
+			::SetOrderQuery(cSort)
+		Endif
+
+		::SetPage(nPage)
+		::SetPageSize(nPageSize)
+		::SetQuery(libapiA2.u_getQuery(cTable,cModo))
+		::SetWhere(cWhere)
+		//::SetOrder(cSort)
+
+		if ::Execute()
+			::FillGetResponse()
+		Endif
+
+		RestArea(aArea)
+		aSize(aArea,0)
+
+	else
+		aFilter := {}
+
+		aArea := FwGetArea()
+
+		AddMapFields(Self, cTable, cFields, cModo)
+
+		cWhere := " 1=1 "
+
+		if!Empty(cFilter)
+			aMontaFilter := StrTokArr(cFilter, ";")
+			For nX := 1 to Len(aMontaFilter)
+				aAdd(aFilter,{"FILTER",aMontaFilter[nX]})
+			Next
+			::setUrlFilter(aFilter)
+		Endif
+
+		if!Empty(cFields)
+			::SetFields(cFields)
+		Endif
+
+		if!Empty(cSort)
+			::SetOrderQuery(cSort)
+		Endif
+
+		::SetPage(nPage)
+		::SetPageSize(nPageSize)
+		::SetQuery(libapiA2.u_getQuery(cTable,cModo))
+		::SetWhere(cWhere)
+		//::SetOrder("Z10_FILIAL , Z10_CODIGO")
+
+		if ::Execute()
+			::FillGetResponse()
+		Endif
+
+		RestArea(aArea)
+		aSize(aArea,0)
+	Endif
+Return Nil
+
+
+
+Static function setResponse(lRet as Logical, cMsg as Character , aDadosRet as Array ) as json
+	Local jResponse as Json
+	Local nX := 0
+
+	Default cMsg := ""
+	Default aDadosRet := {}
+
+	If lRet
+		jResponse := jsonObject():New()
+		jResponse['Mensagem'] := "Realizado com Sucesso!" + cMsg
+		if len(aDadosRet)>0
+			For nX := 1 to len(aDadosRet)
+				jResponse[aDadosRet[nX][1]] := aDadosRet[nX][2]
+			Next
+		EndIf
+	else
+		jResponse := jsonObject():New()
+		jResponse['Mensagem'] := "Erro na execução!" + cMsg
+		if len(aDadosRet)>0
+			For nX := 1 to len(aDadosRet)
+
+				jResponse[aDadosRet[nX][1]] := aDadosRet[nX][2]
+
+			Next nX
+		EndIf
+	Endif
+Return jResponse
+
+Static Function AddMapFields(oSelf as Object, cTable as Character, cFields as Character, cModo as Character)
+
+	Local aFields   := {}
+	Local nX		:= 0
+	Local aFieldStruct	:= {}
+
+	aFields   := FWSX3Util():GetAllFields( cTable , .f. )
+	For nX := 1 To Len( aFields )
+		aFieldStruct := FWSX3Util():GetFieldStruct( aFields[nX] )
+		//[1] - Nome do campo
+		//[2] - Tipo do campo
+		//[3] - Tamanho do campo
+		//[4] - Decimais do campo
+		//[5] - Picture do campo
+		If !Empty(cFields) .and. !aFields[nX]$Upper(cFields)
+			if 'FILIAL'$ aFields[nX]
+				oSelf:AddMapFields(Alltrim(aFieldStruct[1]),aFieldStruct[1] ,.T.,.T.,{aFieldStruct[1] ,aFieldStruct[2]	,aFieldStruct[3],aFieldStruct[4]})
+				Loop
+			else
+				Loop
+			Endif
+		Endif
+		oSelf:AddMapFields(Alltrim(aFieldStruct[1]),aFieldStruct[1] ,.T.,.T.,{aFieldStruct[1] ,aFieldStruct[2]	,aFieldStruct[3],aFieldStruct[4]})
+
+	Next nX
+
+Return Nil
+
+

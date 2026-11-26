@@ -1,0 +1,53 @@
+#INCLUDE "TOTVS.CH"
+#INCLUDE "tlpp-core.th"
+#INCLUDE "FWMVCDEF.CH"
+#include 'protheus.ch'
+#include 'tbiconn.ch'
+#Include "TopConn.ch"
+
+namespace libcunha
+
+User Function getQueryParam(cName as Character) as Character
+	Local cParamText as Character
+
+	cParamText := oRest:getQueryRequest():GetJsonText(cName)
+	If cParamText == 'null'
+		if cName == 'PAGE'
+			cParamText := '1'
+		elseif cName == 'PAGESIZE'
+			cParamText := '10'
+		elseif cName == 'MODO'
+			cParamText := 'TABLE'
+		elseif cName == 'GRUPO'
+			cParamText := '01'
+		else
+			cParamText := ''
+		endif
+	else
+		if cName == 'PAGESIZE'
+			if GetDToVal(cParamText) > 10000
+				cParamText:= '10000'
+			endif
+		elseif cName == 'SORT'
+			if cParamText == 'id'
+				cParamText:= ''
+			Endif
+		Endif
+	Endif
+Return cParamText
+
+
+User Function getQuery( cTable as Character, cModo as Character) as Character
+	Local cQuery as Character
+
+	if cModo == "table"
+		cQuery := " SELECT  #QueryFields# FROM " + RetSqlName(cTable) + " " + cTable
+		cQuery += " WHERE #QueryWhere# "
+	else
+		cQuery := " SELECT  #QueryFields# FROM " + cTable
+		cQuery += " WHERE #QueryWhere# "
+	Endif
+	//cQuery += " ORDER BY #QueryWhere# "
+Return cQuery
+
+

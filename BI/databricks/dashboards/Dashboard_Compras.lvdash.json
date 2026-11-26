@@ -1,0 +1,3278 @@
+{
+  "datasets": [
+    {
+      "name": "apr_kpi",
+      "displayName": "Aprovação - KPIs",
+      "queryLines": [
+        "SELECT count(*) AS pedidos_pendentes, coalesce(sum(valor), 0) AS valor_pendente, percentile_approx(idade_dias, 0.5) AS idade_mediana_dias, count_if(idade_dias > 7) AS pendentes_mais_7_dias, (SELECT count(*) FROM quebec.gold.vw_apr_desconsideradas WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR concat(cod_filial, '|', pedido) IN (SELECT chave FROM quebec.gold.vw_apr_pedido_cc WHERE centro_custo = :centro_custo)) AND (dt_emissao_pedido IS NULL OR dt_emissao_pedido BETWEEN :data_inicio AND :data_fim)) AS linhas_desconsideradas FROM quebec.gold.vw_apr_pedidos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR concat(cod_filial, '|', pedido) IN (SELECT chave FROM quebec.gold.vw_apr_pedido_cc WHERE centro_custo = :centro_custo)) AND (dt_emissao_pedido IS NULL OR dt_emissao_pedido BETWEEN :data_inicio AND :data_fim)"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "apr_fila",
+      "displayName": "Aprovação - por aprovador",
+      "queryLines": [
+        "SELECT aprovador, concat_ws(', ', array_sort(collect_set(papel))) AS papel, concat_ws(', ', array_sort(collect_set(nivel))) AS niveis, count(DISTINCT cod_filial, PEDIDO) AS pedidos, sum(valor) AS valor, round(avg(idade_dias), 1) AS idade_media_dias, max(idade_dias) AS idade_max_dias FROM quebec.gold.vw_apr_fila WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR concat(cod_filial, '|', pedido) IN (SELECT chave FROM quebec.gold.vw_apr_pedido_cc WHERE centro_custo = :centro_custo)) AND (dt_emissao_pedido IS NULL OR dt_emissao_pedido BETWEEN :data_inicio AND :data_fim) GROUP BY aprovador ORDER BY pedidos DESC, valor DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "apr_nivel",
+      "displayName": "Aprovação - alçada por nível",
+      "queryLines": [
+        "SELECT aprovador, concat('Nível ', nivel) AS nivel, count(DISTINCT cod_filial, PEDIDO) AS pedidos, sum(valor) AS valor, round(avg(idade_dias), 1) AS idade_media_dias, max(idade_dias) AS idade_max_dias FROM quebec.gold.vw_apr_fila WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR concat(cod_filial, '|', pedido) IN (SELECT chave FROM quebec.gold.vw_apr_pedido_cc WHERE centro_custo = :centro_custo)) AND (dt_emissao_pedido IS NULL OR dt_emissao_pedido BETWEEN :data_inicio AND :data_fim) GROUP BY aprovador, nivel ORDER BY aprovador, nivel"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "apr_ped",
+      "displayName": "Aprovação - pedidos na alçada",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_apr_pedidos_alcada WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR concat(cod_filial, '|', pedido) IN (SELECT chave FROM quebec.gold.vw_apr_pedido_cc WHERE centro_custo = :centro_custo)) AND (dt_emissao_pedido IS NULL OR dt_emissao_pedido BETWEEN :data_inicio AND :data_fim) ORDER BY idade_dias DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "apr_desc",
+      "displayName": "Aprovação - desconsideradas",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_apr_desconsideradas WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR concat(cod_filial, '|', pedido) IN (SELECT chave FROM quebec.gold.vw_apr_pedido_cc WHERE centro_custo = :centro_custo)) AND (dt_emissao_pedido IS NULL OR dt_emissao_pedido BETWEEN :data_inicio AND :data_fim) ORDER BY situacao, valor DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "apr_pendentes",
+      "displayName": "Aprovação - pedidos pendentes",
+      "queryLines": [
+        "SELECT f.filial, f.ped AS pedido, max(f.valor) AS valor, min(f.dt_emissao_pedido) AS dt_emissao, min(f.dt_entrada_alcada) AS dt_entrada_alcada, datediff(current_date(), min(f.dt_entrada_alcada)) AS dias_parado, concat_ws(', ', array_sort(collect_set(f.aprovador))) AS aprovadores, concat_ws(', ', array_sort(collect_set(concat('Nível ', f.nivel)))) AS niveis, concat_ws(', ', array_sort(collect_set(f.GRUPO_DESC))) AS grupos, concat_ws(', ', array_sort(collect_set(cc.centro_custo))) AS centros_custo FROM (SELECT *, trim(PEDIDO) AS ped FROM quebec.gold.vw_apr_fila) f LEFT JOIN quebec.gold.vw_apr_pedido_cc cc ON cc.chave = concat(f.cod_filial, '|', f.ped) WHERE (:filial = 'Todas' OR f.filial = :filial) AND (:centro_custo = 'Todos' OR concat(f.cod_filial, '|', f.ped) IN (SELECT chave FROM quebec.gold.vw_apr_pedido_cc WHERE centro_custo = :centro_custo)) AND (f.dt_emissao_pedido IS NULL OR f.dt_emissao_pedido BETWEEN :data_inicio AND :data_fim) GROUP BY f.filial, f.ped ORDER BY dias_parado DESC, valor DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "apr_idade",
+      "displayName": "Aprovação - idade",
+      "queryLines": [
+        "SELECT CASE WHEN idade_dias <= 2 THEN '1. 0-2 dias' WHEN idade_dias <= 7 THEN '2. 3-7 dias' WHEN idade_dias <= 15 THEN '3. 8-15 dias' WHEN idade_dias <= 30 THEN '4. 16-30 dias' ELSE '5. > 30 dias' END AS faixa_idade, count(*) AS pedidos, sum(valor) AS valor FROM quebec.gold.vw_apr_pedidos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR concat(cod_filial, '|', pedido) IN (SELECT chave FROM quebec.gold.vw_apr_pedido_cc WHERE centro_custo = :centro_custo)) AND (dt_emissao_pedido IS NULL OR dt_emissao_pedido BETWEEN :data_inicio AND :data_fim) GROUP BY 1 ORDER BY 1"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "com_lt",
+      "displayName": "Compras - lead time",
+      "queryLines": [
+        "SELECT mes, count(*) AS itens, percentile_approx(dias, 0.5) AS mediana_dias, percentile_approx(dias, 0.9) AS p90_dias FROM quebec.gold.vw_com_leadtime WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_pedido BETWEEN :data_inicio AND :data_fim GROUP BY mes ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "com_sc",
+      "displayName": "Compras - SCs por mês",
+      "queryLines": [
+        "SELECT mes, status, count(*) AS itens FROM quebec.gold.vw_com_sc WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_emissao BETWEEN :data_inicio AND :data_fim GROUP BY mes, status ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "com_nf",
+      "displayName": "Compras - notas por mês",
+      "queryLines": [
+        "SELECT mes, sum(valor) AS valor, count(*) AS notas, try_divide(count_if(sem_pedido), count(*)) AS pct_sem_pedido FROM quebec.gold.vw_com_notas WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_digitacao BETWEEN :data_inicio AND :data_fim GROUP BY mes ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "com_nf_cc",
+      "displayName": "Compras - notas por CC",
+      "queryLines": [
+        "SELECT centro_custo, sum(valor) AS valor, count(*) AS notas FROM quebec.gold.vw_com_notas WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_digitacao BETWEEN :data_inicio AND :data_fim GROUP BY centro_custo ORDER BY valor DESC LIMIT 15"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "com_sc_cc",
+      "displayName": "Compras - SCs por CC",
+      "queryLines": [
+        "SELECT centro_custo, count(*) AS itens FROM quebec.gold.vw_com_sc WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_emissao BETWEEN :data_inicio AND :data_fim GROUP BY centro_custo ORDER BY itens DESC LIMIT 15"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "com_ccs",
+      "displayName": "Centros de custo (opções do filtro)",
+      "queryLines": [
+        "SELECT centro_custo FROM (SELECT 'Todos' AS centro_custo UNION SELECT centro_custo FROM quebec.gold.vw_apr_pedido_cc UNION SELECT centro_custo FROM quebec.gold.vw_com_sc UNION SELECT centro_custo FROM quebec.gold.vw_com_leadtime UNION SELECT centro_custo FROM quebec.gold.vw_com_notas) WHERE centro_custo IS NOT NULL ORDER BY CASE WHEN centro_custo = 'Todos' THEN 0 ELSE 1 END, centro_custo"
+      ]
+    },
+    {
+      "name": "filiais",
+      "displayName": "Filiais (opções do filtro)",
+      "queryLines": [
+        "SELECT filial FROM (SELECT 'Todas' AS filial UNION SELECT filial FROM quebec.gold.vw_apr_pedidos UNION SELECT filial FROM quebec.gold.vw_apr_fila UNION SELECT filial FROM quebec.gold.vw_apr_pedidos_alcada UNION SELECT filial FROM quebec.gold.vw_apr_desconsideradas UNION SELECT filial FROM quebec.gold.vw_apr_pedido_cc UNION SELECT filial FROM quebec.gold.vw_com_leadtime UNION SELECT filial FROM quebec.gold.vw_com_sc UNION SELECT filial FROM quebec.gold.vw_com_notas) WHERE filial IS NOT NULL ORDER BY CASE WHEN filial = 'Todas' THEN 0 ELSE 1 END, filial"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_036",
+      "displayName": "Aprovação",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_021",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Fila de aprovação de pedidos",
+                "Entram na fila só os **aprovadores de fato**: quem está no **grupo de aprovação (SAL)** do pedido como aprovador (vistador fica de fora) e, quando o grupo **considera os limites** (AL_AUTOLIM = Sim), só com o **valor do pedido dentro da alçada** dele.",
+                "Só conta o **nível atual** do pedido: enquanto o nível anterior não libera, o pedido não aparece para o aprovador do nível acima. O que fica de fora aparece na tabela de conferência no fim da página. **Datas:** filtram pela emissão do pedido. **Centro de custo:** o pedido entra quando tem algum item naquele CC."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_045",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_kpi_filial",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_pendentes_filial",
+                "query": {
+                  "datasetName": "apr_pendentes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_fila_filial",
+                "query": {
+                  "datasetName": "apr_fila",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_nivel_filial",
+                "query": {
+                  "datasetName": "apr_nivel",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_idade_filial",
+                "query": {
+                  "datasetName": "apr_idade",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_ped_filial",
+                "query": {
+                  "datasetName": "apr_ped",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_desc_filial",
+                "query": {
+                  "datasetName": "apr_desc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_apr_kpi_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_apr_pendentes_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_apr_fila_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_apr_nivel_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_apr_idade_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_apr_ped_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_apr_desc_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_035",
+            "queries": [
+              {
+                "name": "dashboards_com_ccs_centro_custo",
+                "query": {
+                  "datasetName": "com_ccs",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_kpi_centro_custo",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_fila_centro_custo",
+                "query": {
+                  "datasetName": "apr_fila",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_nivel_centro_custo",
+                "query": {
+                  "datasetName": "apr_nivel",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_ped_centro_custo",
+                "query": {
+                  "datasetName": "apr_ped",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_desc_centro_custo",
+                "query": {
+                  "datasetName": "apr_desc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_pendentes_centro_custo",
+                "query": {
+                  "datasetName": "apr_pendentes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_idade_centro_custo",
+                "query": {
+                  "datasetName": "apr_idade",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo",
+                    "queryName": "dashboards_com_ccs_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_apr_kpi_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_apr_fila_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_apr_nivel_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_apr_ped_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_apr_desc_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_apr_pendentes_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_apr_idade_centro_custo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Centro de custo"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_046",
+            "queries": [
+              {
+                "name": "parameter_apr_kpi_data_inicio",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_fila_data_inicio",
+                "query": {
+                  "datasetName": "apr_fila",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_nivel_data_inicio",
+                "query": {
+                  "datasetName": "apr_nivel",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_ped_data_inicio",
+                "query": {
+                  "datasetName": "apr_ped",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_desc_data_inicio",
+                "query": {
+                  "datasetName": "apr_desc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_pendentes_data_inicio",
+                "query": {
+                  "datasetName": "apr_pendentes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_idade_data_inicio",
+                "query": {
+                  "datasetName": "apr_idade",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_apr_kpi_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_apr_fila_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_apr_nivel_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_apr_ped_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_apr_desc_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_apr_pendentes_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_apr_idade_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Emissão de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_047",
+            "queries": [
+              {
+                "name": "parameter_apr_kpi_data_fim",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_fila_data_fim",
+                "query": {
+                  "datasetName": "apr_fila",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_nivel_data_fim",
+                "query": {
+                  "datasetName": "apr_nivel",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_ped_data_fim",
+                "query": {
+                  "datasetName": "apr_ped",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_desc_data_fim",
+                "query": {
+                  "datasetName": "apr_desc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_pendentes_data_fim",
+                "query": {
+                  "datasetName": "apr_pendentes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_apr_idade_data_fim",
+                "query": {
+                  "datasetName": "apr_idade",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_apr_kpi_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_apr_fila_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_apr_nivel_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_apr_ped_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_apr_desc_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_apr_pendentes_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_apr_idade_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Emissão até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_022",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pedidos_pendentes",
+                      "expression": "`pedidos_pendentes`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pedidos_pendentes",
+                  "displayName": "Pedidos aguardando aprovação",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos aguardando aprovação"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_023",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valor_pendente",
+                      "expression": "`valor_pendente`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valor_pendente",
+                  "displayName": "Valor aguardando aprovação",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor aguardando aprovação"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_024",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "idade_mediana_dias",
+                      "expression": "`idade_mediana_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "idade_mediana_dias",
+                  "displayName": "Idade mediana (dias)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Idade mediana (dias)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_025",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pendentes_mais_7_dias",
+                      "expression": "`pendentes_mais_7_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pendentes_mais_7_dias",
+                  "displayName": "Parados > 7 dias",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Parados > 7 dias"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_026",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "linhas_desconsideradas",
+                      "expression": "`linhas_desconsideradas`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "linhas_desconsideradas",
+                  "displayName": "Pendências desconsideradas",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pendências desconsideradas"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_027",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_pendentes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "pedido",
+                      "expression": "`pedido`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "aprovadores",
+                      "expression": "`aprovadores`"
+                    },
+                    {
+                      "name": "niveis",
+                      "expression": "`niveis`"
+                    },
+                    {
+                      "name": "grupos",
+                      "expression": "`grupos`"
+                    },
+                    {
+                      "name": "centros_custo",
+                      "expression": "`centros_custo`"
+                    },
+                    {
+                      "name": "dt_emissao",
+                      "expression": "`dt_emissao`"
+                    },
+                    {
+                      "name": "dt_entrada_alcada",
+                      "expression": "`dt_entrada_alcada`"
+                    },
+                    {
+                      "name": "dias_parado",
+                      "expression": "`dias_parado`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "pedido",
+                    "displayName": "Pedido"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "aprovadores",
+                    "displayName": "Aguardando"
+                  },
+                  {
+                    "fieldName": "niveis",
+                    "displayName": "Níveis"
+                  },
+                  {
+                    "fieldName": "grupos",
+                    "displayName": "Grupo"
+                  },
+                  {
+                    "fieldName": "centros_custo",
+                    "displayName": "Centros de custo"
+                  },
+                  {
+                    "fieldName": "dt_emissao",
+                    "displayName": "Emissão"
+                  },
+                  {
+                    "fieldName": "dt_entrada_alcada",
+                    "displayName": "Entrou na alçada"
+                  },
+                  {
+                    "fieldName": "dias_parado",
+                    "displayName": "Dias parado"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos pendentes de aprovação (um por pedido, mais antigos primeiro)",
+                "showDescription": true,
+                "description": "Cada pedido aparece uma vez; o valor é o total do pedido. 'Aguardando' lista os aprovadores da SAL que ainda precisam liberar"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 6,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_028",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_fila",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "aprovador",
+                      "expression": "`aprovador`"
+                    },
+                    {
+                      "name": "pedidos",
+                      "expression": "`pedidos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "pedidos",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pedidos",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "aprovador",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Aprovador"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos pendentes por aprovador",
+                "showDescription": true,
+                "description": "Pedidos que já chegaram no nível do aprovador (aprovador da SAL, valor dentro da alçada). Pedido com mais de um aprovador aparece em cada um"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 16,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_029",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_fila",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "aprovador",
+                      "expression": "`aprovador`"
+                    },
+                    {
+                      "name": "papel",
+                      "expression": "`papel`"
+                    },
+                    {
+                      "name": "niveis",
+                      "expression": "`niveis`"
+                    },
+                    {
+                      "name": "pedidos",
+                      "expression": "`pedidos`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "idade_media_dias",
+                      "expression": "`idade_media_dias`"
+                    },
+                    {
+                      "name": "idade_max_dias",
+                      "expression": "`idade_max_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "aprovador",
+                    "displayName": "Aprovador"
+                  },
+                  {
+                    "fieldName": "papel",
+                    "displayName": "Liberação"
+                  },
+                  {
+                    "fieldName": "niveis",
+                    "displayName": "Níveis"
+                  },
+                  {
+                    "fieldName": "pedidos",
+                    "displayName": "Pedidos"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "idade_media_dias",
+                    "displayName": "Idade média (dias)"
+                  },
+                  {
+                    "fieldName": "idade_max_dias",
+                    "displayName": "Mais antigo (dias)"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Fila por aprovador"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 16,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_030",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_nivel",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "aprovador",
+                      "expression": "`aprovador`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "nivel",
+                      "expression": "`nivel`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "aprovador",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Aprovador"
+                },
+                "color": {
+                  "fieldName": "nivel",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Nível"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor parado por nível da alçada",
+                "showDescription": true,
+                "description": "Nível do grupo de aprovação em que o pedido aguarda cada aprovador"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 23,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_031",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_nivel",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "aprovador",
+                      "expression": "`aprovador`"
+                    },
+                    {
+                      "name": "nivel",
+                      "expression": "`nivel`"
+                    },
+                    {
+                      "name": "pedidos",
+                      "expression": "`pedidos`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "idade_media_dias",
+                      "expression": "`idade_media_dias`"
+                    },
+                    {
+                      "name": "idade_max_dias",
+                      "expression": "`idade_max_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "aprovador",
+                    "displayName": "Aprovador"
+                  },
+                  {
+                    "fieldName": "nivel",
+                    "displayName": "Nível"
+                  },
+                  {
+                    "fieldName": "pedidos",
+                    "displayName": "Pedidos"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "idade_media_dias",
+                    "displayName": "Idade média (dias)"
+                  },
+                  {
+                    "fieldName": "idade_max_dias",
+                    "displayName": "Mais antigo (dias)"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Fila por nível"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 23,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_032",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_idade",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "faixa_idade",
+                      "expression": "`faixa_idade`"
+                    },
+                    {
+                      "name": "pedidos",
+                      "expression": "`pedidos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "faixa_idade",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Idade"
+                },
+                "y": {
+                  "fieldName": "pedidos",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pedidos"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos pendentes por idade"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 30,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_033",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_ped",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "pedido",
+                      "expression": "`pedido`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    },
+                    {
+                      "name": "nivel",
+                      "expression": "`nivel`"
+                    },
+                    {
+                      "name": "aprovador",
+                      "expression": "`aprovador`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "limite_min",
+                      "expression": "`limite_min`"
+                    },
+                    {
+                      "name": "limite_max",
+                      "expression": "`limite_max`"
+                    },
+                    {
+                      "name": "dt_emissao_pedido",
+                      "expression": "`dt_emissao_pedido`"
+                    },
+                    {
+                      "name": "dt_entrada_alcada",
+                      "expression": "`dt_entrada_alcada`"
+                    },
+                    {
+                      "name": "idade_dias",
+                      "expression": "`idade_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "pedido",
+                    "displayName": "Pedido"
+                  },
+                  {
+                    "fieldName": "grupo",
+                    "displayName": "Grupo"
+                  },
+                  {
+                    "fieldName": "nivel",
+                    "displayName": "Nível"
+                  },
+                  {
+                    "fieldName": "aprovador",
+                    "displayName": "Aprovador"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "limite_min",
+                    "displayName": "Alçada de"
+                  },
+                  {
+                    "fieldName": "limite_max",
+                    "displayName": "Alçada até"
+                  },
+                  {
+                    "fieldName": "dt_emissao_pedido",
+                    "displayName": "Emissão"
+                  },
+                  {
+                    "fieldName": "dt_entrada_alcada",
+                    "displayName": "Entrou na alçada"
+                  },
+                  {
+                    "fieldName": "idade_dias",
+                    "displayName": "Dias"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pedidos parados na alçada (mais antigos primeiro)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 30,
+            "width": 4,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_034",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "apr_desc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "situacao",
+                      "expression": "`situacao`"
+                    },
+                    {
+                      "name": "aprovador",
+                      "expression": "`aprovador`"
+                    },
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "pedido",
+                      "expression": "`pedido`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    },
+                    {
+                      "name": "nivel",
+                      "expression": "`nivel`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "limite_min",
+                      "expression": "`limite_min`"
+                    },
+                    {
+                      "name": "limite_max",
+                      "expression": "`limite_max`"
+                    },
+                    {
+                      "name": "dt_emissao_pedido",
+                      "expression": "`dt_emissao_pedido`"
+                    },
+                    {
+                      "name": "idade_dias",
+                      "expression": "`idade_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "situacao",
+                    "displayName": "Motivo"
+                  },
+                  {
+                    "fieldName": "aprovador",
+                    "displayName": "Aprovador"
+                  },
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "pedido",
+                    "displayName": "Pedido"
+                  },
+                  {
+                    "fieldName": "grupo",
+                    "displayName": "Grupo"
+                  },
+                  {
+                    "fieldName": "nivel",
+                    "displayName": "Nível"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "limite_min",
+                    "displayName": "Alçada de"
+                  },
+                  {
+                    "fieldName": "limite_max",
+                    "displayName": "Alçada até"
+                  },
+                  {
+                    "fieldName": "dt_emissao_pedido",
+                    "displayName": "Emissão"
+                  },
+                  {
+                    "fieldName": "idade_dias",
+                    "displayName": "Dias"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Conferência: pendências desconsideradas",
+                "showDescription": true,
+                "description": "Linhas da SCR com status 02 que não entram na fila: vistador, fora do grupo (SAL) ou valor fora da alçada com AL_AUTOLIM = Sim"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 38,
+            "width": 6,
+            "height": 7
+          }
+        }
+      ]
+    },
+    {
+      "name": "pg_044",
+      "displayName": "Solicitações e pedidos",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_037",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Solicitações, pedidos e notas",
+                "**Lead time:** dias entre a solicitação de compra e o pedido. A **mediana** mostra o caso típico; o **P90**, os 10% mais lentos. Se o P90 se afasta da mediana, há gargalo em casos específicos.",
+                "**Filtros:** o período vale para a emissão da SC, a emissão do pedido (lead time) e a digitação da nota. O centro de custo é o do item (na nota, o do documento)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_048",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_lt_filial",
+                "query": {
+                  "datasetName": "com_lt",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_sc_filial",
+                "query": {
+                  "datasetName": "com_sc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_nf_filial",
+                "query": {
+                  "datasetName": "com_nf",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_sc_cc_filial",
+                "query": {
+                  "datasetName": "com_sc_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_nf_cc_filial",
+                "query": {
+                  "datasetName": "com_nf_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_com_lt_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_com_sc_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_com_nf_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_com_sc_cc_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_com_nf_cc_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_043",
+            "queries": [
+              {
+                "name": "dashboards_com_ccs_centro_custo",
+                "query": {
+                  "datasetName": "com_ccs",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_lt_centro_custo",
+                "query": {
+                  "datasetName": "com_lt",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_sc_centro_custo",
+                "query": {
+                  "datasetName": "com_sc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_nf_centro_custo",
+                "query": {
+                  "datasetName": "com_nf",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_nf_cc_centro_custo",
+                "query": {
+                  "datasetName": "com_nf_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_sc_cc_centro_custo",
+                "query": {
+                  "datasetName": "com_sc_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo",
+                    "queryName": "dashboards_com_ccs_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_com_lt_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_com_sc_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_com_nf_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_com_nf_cc_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_com_sc_cc_centro_custo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Centro de custo"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_049",
+            "queries": [
+              {
+                "name": "parameter_com_lt_data_inicio",
+                "query": {
+                  "datasetName": "com_lt",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_sc_data_inicio",
+                "query": {
+                  "datasetName": "com_sc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_nf_data_inicio",
+                "query": {
+                  "datasetName": "com_nf",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_nf_cc_data_inicio",
+                "query": {
+                  "datasetName": "com_nf_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_sc_cc_data_inicio",
+                "query": {
+                  "datasetName": "com_sc_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_com_lt_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_com_sc_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_com_nf_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_com_nf_cc_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_com_sc_cc_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_050",
+            "queries": [
+              {
+                "name": "parameter_com_lt_data_fim",
+                "query": {
+                  "datasetName": "com_lt",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_sc_data_fim",
+                "query": {
+                  "datasetName": "com_sc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_nf_data_fim",
+                "query": {
+                  "datasetName": "com_nf",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_nf_cc_data_fim",
+                "query": {
+                  "datasetName": "com_nf_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_com_sc_cc_data_fim",
+                "query": {
+                  "datasetName": "com_sc_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_com_lt_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_com_sc_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_com_nf_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_com_nf_cc_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_com_sc_cc_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "line_038",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "com_lt",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "mediana_dias",
+                      "expression": "`mediana_dias`"
+                    },
+                    {
+                      "name": "p90_dias",
+                      "expression": "`p90_dias`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "mediana_dias",
+                      "displayName": "Mediana"
+                    },
+                    {
+                      "fieldName": "p90_dias",
+                      "displayName": "P90"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Lead time SC → pedido (dias)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_039",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "com_sc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "itens",
+                      "expression": "`itens`"
+                    },
+                    {
+                      "name": "status",
+                      "expression": "`status`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "itens",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Itens"
+                },
+                "color": {
+                  "fieldName": "status",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Status"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Itens de solicitação por mês e status"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_040",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "com_nf",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Notas de entrada por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 11,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_041",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "com_sc_cc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "itens",
+                      "expression": "`itens`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "itens",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Itens"
+                },
+                "y": {
+                  "fieldName": "centro_custo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Centro de custo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Itens de solicitação por centro de custo (top 15)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_042",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "com_nf_cc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "centro_custo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Centro de custo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Notas de entrada por centro de custo (top 15)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 17,
+            "width": 3,
+            "height": 7
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,9 @@
 {
     "totvsLanguageServer.editor.linter.includes": "/home/thiago/Documentos/includes",
-    "totvsLanguageServer.welcomePage": false
+    "totvsLanguageServer.welcomePage": false,
+    "[advpl]": {
+        "files.encoding": "windows1252"
+    },
+    "advpl.debug_multiThread": true,
+    "totvsLanguageServer.workspaceServerConfig": false
 }

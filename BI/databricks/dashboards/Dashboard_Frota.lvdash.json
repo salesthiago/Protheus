@@ -1,0 +1,2536 @@
+{
+  "datasets": [
+    {
+      "name": "mnt_kpi",
+      "displayName": "Frota - KPIs",
+      "queryLines": [
+        "WITH c AS (SELECT * FROM quebec.gold.vw_mnt_custos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND data BETWEEN :data_inicio AND :data_fim) SELECT (SELECT count(*) FROM quebec.gold.vw_mnt_os WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_abertura BETWEEN :data_inicio AND :data_fim) AS os_periodo, (SELECT count_if(NOT terminada) FROM quebec.gold.vw_mnt_os WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_abertura BETWEEN :data_inicio AND :data_fim) AS os_abertas, sum(valor) AS custo_total, try_divide(sum(valor), greatest(datediff(least(:data_fim, current_date()), :data_inicio) + 1, 1)) AS custo_dia, sum(CASE WHEN origem IN ('Peças', 'Serviços de terceiros') THEN valor ELSE 0 END) AS custo_manutencao, sum(CASE WHEN origem = 'Pneus' THEN valor ELSE 0 END) AS custo_pneus, sum(CASE WHEN origem = 'Combustível' THEN valor ELSE 0 END) AS custo_combustivel, count(DISTINCT bem) AS bens_com_custo FROM c"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mnt_mes",
+      "displayName": "Frota - OS por mês",
+      "queryLines": [
+        "SELECT date_trunc('MONTH', dt_abertura) AS mes, tipo_manutencao, count(*) AS qtd_os FROM quebec.gold.vw_mnt_os WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_abertura BETWEEN :data_inicio AND :data_fim GROUP BY 1, 2 ORDER BY 1"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mnt_custo_mes",
+      "displayName": "Frota - custo por mês e origem",
+      "queryLines": [
+        "SELECT date_trunc('MONTH', data) AS mes, origem, sum(valor) AS custo FROM quebec.gold.vw_mnt_custos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND data BETWEEN :data_inicio AND :data_fim GROUP BY 1, 2 ORDER BY 1"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mnt_fam",
+      "displayName": "Frota - custo por família",
+      "queryLines": [
+        "WITH f AS (SELECT coalesce(familia, 'Sem familia') AS familia, origem, sum(valor) AS custo FROM quebec.gold.vw_mnt_custos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND data BETWEEN :data_inicio AND :data_fim GROUP BY 1, 2), t AS (SELECT familia FROM f GROUP BY 1 ORDER BY sum(custo) DESC LIMIT 15) SELECT f.* FROM f JOIN t USING (familia)"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mnt_cc",
+      "displayName": "Frota - custo por CC",
+      "queryLines": [
+        "WITH f AS (SELECT centro_custo, origem, sum(valor) AS custo FROM quebec.gold.vw_mnt_custos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND data BETWEEN :data_inicio AND :data_fim GROUP BY 1, 2), t AS (SELECT centro_custo FROM f GROUP BY 1 ORDER BY sum(custo) DESC LIMIT 15) SELECT f.* FROM f JOIN t USING (centro_custo)"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mnt_bem",
+      "displayName": "Frota - custo por bem",
+      "queryLines": [
+        "WITH c AS (SELECT bem, max(CASE WHEN bem_nome LIKE concat(bem, '%') THEN bem_nome ELSE concat_ws(' - ', bem, bem_nome) END) AS bem_desc, max(familia) AS familia, sum(valor) AS custo, sum(CASE WHEN origem = 'Peças' THEN valor ELSE 0 END) AS custo_pecas, sum(CASE WHEN origem = 'Serviços de terceiros' THEN valor ELSE 0 END) AS custo_terceiros, sum(CASE WHEN origem = 'Pneus' THEN valor ELSE 0 END) AS custo_pneus, sum(CASE WHEN origem = 'Combustível' THEN valor ELSE 0 END) AS custo_combustivel, sum(CASE WHEN origem = 'Combustível' THEN quantidade ELSE 0 END) AS litros FROM quebec.gold.vw_mnt_custos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND data BETWEEN :data_inicio AND :data_fim GROUP BY bem), o AS (SELECT bem, count(*) AS qtd_os FROM quebec.gold.vw_mnt_os WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_abertura BETWEEN :data_inicio AND :data_fim GROUP BY bem), k AS (SELECT bem, sum(km_rodados) AS km_rodados FROM quebec.gold.vw_mnt_km_mes WHERE mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim GROUP BY bem), r AS (SELECT c.*, coalesce(o.qtd_os, 0) AS qtd_os, k.km_rodados, try_divide(c.custo, greatest(datediff(least(:data_fim, current_date()), :data_inicio) + 1, 1)) AS custo_dia, try_divide(c.custo, k.km_rodados) AS custo_por_km, row_number() OVER (ORDER BY c.custo DESC) AS ranking FROM c LEFT JOIN o ON o.bem = c.bem LEFT JOIN k ON k.bem = c.bem) SELECT * FROM r WHERE ranking <= 50 ORDER BY ranking"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mnt_detalhe",
+      "displayName": "Frota - detalhamento do custo por bem",
+      "queryLines": [
+        "WITH d AS (SELECT *, CASE WHEN bem_nome LIKE concat(bem, '%') THEN bem_nome ELSE concat_ws(' - ', bem, bem_nome) END AS bem_desc FROM quebec.gold.vw_mnt_custos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND data BETWEEN :data_inicio AND :data_fim), r AS (SELECT bem, row_number() OVER (ORDER BY sum(valor) DESC) AS ranking FROM d GROUP BY bem) SELECT d.filial, d.centro_custo, d.bem, d.bem_desc, d.familia, d.data, date_trunc('MONTH', d.data) AS mes, d.origem, d.documento, d.descricao, d.quantidade, d.valor, try_divide(d.valor, greatest(datediff(least(:data_fim, current_date()), :data_inicio) + 1, 1)) AS valor_dia, r.ranking FROM d JOIN r ON r.bem = d.bem WHERE r.ranking <= 50 ORDER BY r.ranking, d.data, d.documento"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mnt_atip",
+      "displayName": "Frota - OS atípicas",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_mnt_os_atipicas WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_abertura BETWEEN :data_inicio AND :data_fim ORDER BY z_score DESC LIMIT 100"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "mnt_ccs",
+      "displayName": "Centros de custo (opções do filtro)",
+      "queryLines": [
+        "SELECT centro_custo FROM (SELECT 'Todos' AS centro_custo UNION SELECT centro_custo FROM quebec.gold.vw_mnt_os UNION SELECT centro_custo FROM quebec.gold.vw_mnt_custos) WHERE centro_custo IS NOT NULL ORDER BY CASE WHEN centro_custo = 'Todos' THEN 0 ELSE 1 END, centro_custo"
+      ]
+    },
+    {
+      "name": "filiais",
+      "displayName": "Filiais (opções do filtro)",
+      "queryLines": [
+        "SELECT filial FROM (SELECT 'Todas' AS filial UNION SELECT filial FROM quebec.gold.vw_mnt_os UNION SELECT filial FROM quebec.gold.vw_mnt_custos UNION SELECT filial FROM quebec.gold.vw_mnt_os_atipicas) WHERE filial IS NOT NULL ORDER BY CASE WHEN filial = 'Todas' THEN 0 ELSE 1 END, filial"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_070",
+      "displayName": "Frota",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_051",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Custo da frota",
+                "**Custo da frota** = peças + pneus + serviços de terceiros das OS + combustível dos abastecimentos. **Custo/dia** = custo ÷ dias do período (contados até hoje).",
+                "**Detalhamento:** clique numa barra do ranking **50 bens com maior custo** (ou escolha no filtro *Bem*) e a composição, a evolução mensal e a tabela de lançamentos mostram só aquele bem. Clique de novo para limpar.",
+                "**OS atípicas:** custo mais de 3 desvios-padrão acima da média do mesmo serviço (z-score > 3). **Filtros:** o período vale para a abertura da OS e a data do abastecimento; o centro de custo é o da OS / do abastecimento."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_071",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_kpi_filial",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_detalhe_filial",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_bem_filial",
+                "query": {
+                  "datasetName": "mnt_bem",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_custo_mes_filial",
+                "query": {
+                  "datasetName": "mnt_custo_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_mes_filial",
+                "query": {
+                  "datasetName": "mnt_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_fam_filial",
+                "query": {
+                  "datasetName": "mnt_fam",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_cc_filial",
+                "query": {
+                  "datasetName": "mnt_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_atip_filial",
+                "query": {
+                  "datasetName": "mnt_atip",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_mnt_kpi_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_mnt_detalhe_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_mnt_bem_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_mnt_custo_mes_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_mnt_mes_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_mnt_fam_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_mnt_cc_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_mnt_atip_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_069",
+            "queries": [
+              {
+                "name": "dashboards_mnt_ccs_centro_custo",
+                "query": {
+                  "datasetName": "mnt_ccs",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_kpi_centro_custo",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_mes_centro_custo",
+                "query": {
+                  "datasetName": "mnt_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_custo_mes_centro_custo",
+                "query": {
+                  "datasetName": "mnt_custo_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_fam_centro_custo",
+                "query": {
+                  "datasetName": "mnt_fam",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_cc_centro_custo",
+                "query": {
+                  "datasetName": "mnt_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_bem_centro_custo",
+                "query": {
+                  "datasetName": "mnt_bem",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_detalhe_centro_custo",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_atip_centro_custo",
+                "query": {
+                  "datasetName": "mnt_atip",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo",
+                    "queryName": "dashboards_mnt_ccs_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_mnt_kpi_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_mnt_mes_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_mnt_custo_mes_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_mnt_fam_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_mnt_cc_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_mnt_bem_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_mnt_detalhe_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_mnt_atip_centro_custo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Centro de custo"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_072",
+            "queries": [
+              {
+                "name": "parameter_mnt_kpi_data_inicio",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_mes_data_inicio",
+                "query": {
+                  "datasetName": "mnt_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_custo_mes_data_inicio",
+                "query": {
+                  "datasetName": "mnt_custo_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_fam_data_inicio",
+                "query": {
+                  "datasetName": "mnt_fam",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_cc_data_inicio",
+                "query": {
+                  "datasetName": "mnt_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_bem_data_inicio",
+                "query": {
+                  "datasetName": "mnt_bem",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_detalhe_data_inicio",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_atip_data_inicio",
+                "query": {
+                  "datasetName": "mnt_atip",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_mnt_kpi_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_mnt_mes_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_mnt_custo_mes_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_mnt_fam_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_mnt_cc_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_mnt_bem_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_mnt_detalhe_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_mnt_atip_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_073",
+            "queries": [
+              {
+                "name": "parameter_mnt_kpi_data_fim",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_mes_data_fim",
+                "query": {
+                  "datasetName": "mnt_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_custo_mes_data_fim",
+                "query": {
+                  "datasetName": "mnt_custo_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_fam_data_fim",
+                "query": {
+                  "datasetName": "mnt_fam",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_cc_data_fim",
+                "query": {
+                  "datasetName": "mnt_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_bem_data_fim",
+                "query": {
+                  "datasetName": "mnt_bem",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_detalhe_data_fim",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_mnt_atip_data_fim",
+                "query": {
+                  "datasetName": "mnt_atip",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_mnt_kpi_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_mnt_mes_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_mnt_custo_mes_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_mnt_fam_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_mnt_cc_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_mnt_bem_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_mnt_detalhe_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_mnt_atip_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_052",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "custo_total",
+                      "expression": "`custo_total`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "custo_total",
+                  "displayName": "Custo total da frota",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo total da frota"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_053",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "custo_dia",
+                      "expression": "`custo_dia`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "custo_dia",
+                  "displayName": "Custo por dia",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo por dia"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_054",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "custo_manutencao",
+                      "expression": "`custo_manutencao`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "custo_manutencao",
+                  "displayName": "Manutenção (peças + terceiros)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Manutenção (peças + terceiros)"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_055",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "custo_pneus",
+                      "expression": "`custo_pneus`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "custo_pneus",
+                  "displayName": "Pneus",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pneus"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_056",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "custo_combustivel",
+                      "expression": "`custo_combustivel`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "custo_combustivel",
+                  "displayName": "Combustível",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Combustível"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_057",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "os_abertas",
+                      "expression": "`os_abertas`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "os_abertas",
+                  "displayName": "OS não terminadas",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "OS não terminadas"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "filtro_058",
+            "queries": [
+              {
+                "name": "campo_mnt_detalhe_bem_desc",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "bem_desc",
+                      "expression": "`bem_desc`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "campo_mnt_bem_bem_desc",
+                "query": {
+                  "datasetName": "mnt_bem",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "bem_desc",
+                      "expression": "`bem_desc`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "bem_desc",
+                    "displayName": "Bem",
+                    "queryName": "campo_mnt_detalhe_bem_desc"
+                  },
+                  {
+                    "fieldName": "bem_desc",
+                    "displayName": "Bem",
+                    "queryName": "campo_mnt_bem_bem_desc"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Bem"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 3,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_059",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "bem_desc",
+                      "expression": "`bem_desc`"
+                    },
+                    {
+                      "name": "sum(valor)",
+                      "expression": "SUM(`valor`)"
+                    },
+                    {
+                      "name": "sum(valor_dia)",
+                      "expression": "SUM(`valor_dia`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(valor)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo no período",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "bem_desc",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Bem"
+                },
+                "extra": [
+                  {
+                    "fieldName": "sum(valor_dia)",
+                    "displayName": "Custo por dia",
+                    "format": {
+                      "type": "number-currency",
+                      "currencyCode": "BRL",
+                      "abbreviation": "compact",
+                      "decimalPlaces": {
+                        "type": "max",
+                        "places": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "50 bens com maior custo (clique para detalhar)",
+                "showDescription": true,
+                "description": "Passe o mouse para ver o custo no período e o custo por dia"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 3,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_060",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "origem",
+                      "expression": "`origem`"
+                    },
+                    {
+                      "name": "sum(valor)",
+                      "expression": "SUM(`valor`)"
+                    },
+                    {
+                      "name": "sum(valor_dia)",
+                      "expression": "SUM(`valor_dia`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(valor)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "origem",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Origem"
+                },
+                "extra": [
+                  {
+                    "fieldName": "sum(valor_dia)",
+                    "displayName": "Custo por dia",
+                    "format": {
+                      "type": "number-currency",
+                      "currencyCode": "BRL",
+                      "abbreviation": "compact",
+                      "decimalPlaces": {
+                        "type": "max",
+                        "places": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Composição do custo",
+                "showDescription": true,
+                "description": "Do bem clicado no ranking (ou de todos os bens do ranking)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 9,
+            "width": 3,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "line_061",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "sum(valor)",
+                      "expression": "SUM(`valor`)"
+                    },
+                    {
+                      "name": "origem",
+                      "expression": "`origem`"
+                    },
+                    {
+                      "name": "sum(valor_dia)",
+                      "expression": "SUM(`valor_dia`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "sum(valor)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "origem",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Origem"
+                },
+                "extra": [
+                  {
+                    "fieldName": "sum(valor_dia)",
+                    "displayName": "Custo por dia",
+                    "format": {
+                      "type": "number-currency",
+                      "currencyCode": "BRL",
+                      "abbreviation": "compact",
+                      "decimalPlaces": {
+                        "type": "max",
+                        "places": 1
+                      }
+                    }
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo por mês do bem selecionado"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 19,
+            "width": 6,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_062",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_detalhe",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "bem_desc",
+                      "expression": "`bem_desc`"
+                    },
+                    {
+                      "name": "data",
+                      "expression": "`data`"
+                    },
+                    {
+                      "name": "origem",
+                      "expression": "`origem`"
+                    },
+                    {
+                      "name": "documento",
+                      "expression": "`documento`"
+                    },
+                    {
+                      "name": "descricao",
+                      "expression": "`descricao`"
+                    },
+                    {
+                      "name": "quantidade",
+                      "expression": "`quantidade`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "bem_desc",
+                    "displayName": "Bem"
+                  },
+                  {
+                    "fieldName": "data",
+                    "displayName": "Data"
+                  },
+                  {
+                    "fieldName": "origem",
+                    "displayName": "Origem"
+                  },
+                  {
+                    "fieldName": "documento",
+                    "displayName": "OS / abastecimento"
+                  },
+                  {
+                    "fieldName": "descricao",
+                    "displayName": "Item"
+                  },
+                  {
+                    "fieldName": "quantidade",
+                    "displayName": "Qtd / litros"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Detalhamento: como se chegou ao custo do bem",
+                "showDescription": true,
+                "description": "Cada linha é uma peça/pneu aplicado na OS, o serviço de terceiros da OS ou um abastecimento. A soma dá o custo do bem"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 26,
+            "width": 6,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_063",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_bem",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "ranking",
+                      "expression": "`ranking`"
+                    },
+                    {
+                      "name": "bem_desc",
+                      "expression": "`bem_desc`"
+                    },
+                    {
+                      "name": "familia",
+                      "expression": "`familia`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    },
+                    {
+                      "name": "custo_dia",
+                      "expression": "`custo_dia`"
+                    },
+                    {
+                      "name": "custo_pecas",
+                      "expression": "`custo_pecas`"
+                    },
+                    {
+                      "name": "custo_terceiros",
+                      "expression": "`custo_terceiros`"
+                    },
+                    {
+                      "name": "custo_pneus",
+                      "expression": "`custo_pneus`"
+                    },
+                    {
+                      "name": "custo_combustivel",
+                      "expression": "`custo_combustivel`"
+                    },
+                    {
+                      "name": "litros",
+                      "expression": "`litros`"
+                    },
+                    {
+                      "name": "qtd_os",
+                      "expression": "`qtd_os`"
+                    },
+                    {
+                      "name": "km_rodados",
+                      "expression": "`km_rodados`"
+                    },
+                    {
+                      "name": "custo_por_km",
+                      "expression": "`custo_por_km`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "ranking",
+                    "displayName": "#"
+                  },
+                  {
+                    "fieldName": "bem_desc",
+                    "displayName": "Bem"
+                  },
+                  {
+                    "fieldName": "familia",
+                    "displayName": "Família"
+                  },
+                  {
+                    "fieldName": "custo",
+                    "displayName": "Custo total"
+                  },
+                  {
+                    "fieldName": "custo_dia",
+                    "displayName": "Custo/dia"
+                  },
+                  {
+                    "fieldName": "custo_pecas",
+                    "displayName": "Peças"
+                  },
+                  {
+                    "fieldName": "custo_terceiros",
+                    "displayName": "Terceiros"
+                  },
+                  {
+                    "fieldName": "custo_pneus",
+                    "displayName": "Pneus"
+                  },
+                  {
+                    "fieldName": "custo_combustivel",
+                    "displayName": "Combustível"
+                  },
+                  {
+                    "fieldName": "litros",
+                    "displayName": "Litros"
+                  },
+                  {
+                    "fieldName": "qtd_os",
+                    "displayName": "OS"
+                  },
+                  {
+                    "fieldName": "km_rodados",
+                    "displayName": "Km"
+                  },
+                  {
+                    "fieldName": "custo_por_km",
+                    "displayName": "R$/km"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Bens com maior custo"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 35,
+            "width": 6,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "line_064",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_custo_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    },
+                    {
+                      "name": "origem",
+                      "expression": "`origem`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "custo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "origem",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Origem"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo da frota por mês e origem"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 43,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_065",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "qtd_os",
+                      "expression": "`qtd_os`"
+                    },
+                    {
+                      "name": "tipo_manutencao",
+                      "expression": "`tipo_manutencao`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "qtd_os",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "OS"
+                },
+                "color": {
+                  "fieldName": "tipo_manutencao",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Tipo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "OS por mês e tipo de manutenção"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 43,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_066",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_fam",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "familia",
+                      "expression": "`familia`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    },
+                    {
+                      "name": "origem",
+                      "expression": "`origem`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "custo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "familia",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Família"
+                },
+                "color": {
+                  "fieldName": "origem",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Origem"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo por família de bem (top 15)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 50,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_067",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_cc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    },
+                    {
+                      "name": "origem",
+                      "expression": "`origem`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "custo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Custo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "centro_custo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Centro de custo"
+                },
+                "color": {
+                  "fieldName": "origem",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Origem"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Custo por centro de custo (top 15)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 50,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_068",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "mnt_atip",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "OS",
+                      "expression": "`OS`"
+                    },
+                    {
+                      "name": "bem_nome",
+                      "expression": "`bem_nome`"
+                    },
+                    {
+                      "name": "servico",
+                      "expression": "`servico`"
+                    },
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "custo",
+                      "expression": "`custo`"
+                    },
+                    {
+                      "name": "media_servico",
+                      "expression": "`media_servico`"
+                    },
+                    {
+                      "name": "z_score",
+                      "expression": "`z_score`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "OS",
+                    "displayName": "OS"
+                  },
+                  {
+                    "fieldName": "bem_nome",
+                    "displayName": "Bem"
+                  },
+                  {
+                    "fieldName": "servico",
+                    "displayName": "Serviço"
+                  },
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo"
+                  },
+                  {
+                    "fieldName": "custo",
+                    "displayName": "Custo"
+                  },
+                  {
+                    "fieldName": "media_servico",
+                    "displayName": "Média do serviço"
+                  },
+                  {
+                    "fieldName": "z_score",
+                    "displayName": "z"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "OS com custo atípico (z-score > 3)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 57,
+            "width": 6,
+            "height": 8
+          }
+        }
+      ]
+    }
+  ]
+}

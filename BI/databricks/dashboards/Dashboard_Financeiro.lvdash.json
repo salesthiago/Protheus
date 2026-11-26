@@ -1,0 +1,2010 @@
+{
+  "datasets": [
+    {
+      "name": "fin_kpi",
+      "displayName": "Financeiro - KPIs",
+      "queryLines": [
+        "WITH t AS (SELECT * FROM quebec.gold.vw_fin_titulos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND coalesce(dt_vencimento, dt_emissao) BETWEEN :data_inicio AND :data_fim), f AS (SELECT FORNECEDOR, sum(saldo) AS s FROM t WHERE grupo = 'Efetivo' GROUP BY FORNECEDOR), -- Indice Herfindahl-Hirschman (0-10000): > 1500 = concentracao moderada, > 2500 = alta h AS (SELECT round(sum(power(try_divide(s, tot), 2)) * 10000, 0) AS hhi FROM (SELECT s, sum(s) OVER () AS tot FROM f)) SELECT sum(saldo) AS saldo_total, sum(CASE WHEN grupo = 'Efetivo' THEN saldo END) AS saldo_efetivo, sum(CASE WHEN grupo = 'Efetivo' AND dias_atraso > 0 THEN saldo END) AS saldo_vencido, try_divide(sum(CASE WHEN grupo = 'Efetivo' AND dias_atraso > 0 THEN saldo END), sum(CASE WHEN grupo = 'Efetivo' THEN saldo END)) AS pct_vencido, sum(CASE WHEN grupo = 'Provisorio (PR)' THEN saldo END) AS saldo_provisorio, count(*) AS qtd_titulos, (SELECT hhi FROM h) AS hhi_fornecedores FROM t"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fin_aging",
+      "displayName": "Financeiro - aging",
+      "queryLines": [
+        "SELECT faixa, grupo, sum(saldo) AS saldo, count(*) AS qtd_titulos FROM quebec.gold.vw_fin_titulos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND coalesce(dt_vencimento, dt_emissao) BETWEEN :data_inicio AND :data_fim GROUP BY faixa, grupo ORDER BY faixa"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fin_fluxo",
+      "displayName": "Financeiro - fluxo semanal",
+      "queryLines": [
+        "SELECT date_trunc('WEEK', dt_vencimento) AS semana, grupo, sum(saldo) AS saldo FROM quebec.gold.vw_fin_titulos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND coalesce(dt_vencimento, dt_emissao) BETWEEN :data_inicio AND :data_fim AND dt_vencimento BETWEEN current_date() AND date_add(current_date(), 84) GROUP BY 1, 2 ORDER BY 1"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fin_pareto",
+      "displayName": "Financeiro - Pareto fornecedores",
+      "queryLines": [
+        "WITH f AS (SELECT FORNECEDOR AS fornecedor, sum(saldo) AS saldo, count(*) AS titulos FROM quebec.gold.vw_fin_titulos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND coalesce(dt_vencimento, dt_emissao) BETWEEN :data_inicio AND :data_fim AND grupo = 'Efetivo' GROUP BY FORNECEDOR), r AS (SELECT *, row_number() OVER (ORDER BY saldo DESC) AS ranking, try_divide(saldo, sum(saldo) OVER ()) AS pct, try_divide(sum(saldo) OVER (ORDER BY saldo DESC ROWS UNBOUNDED PRECEDING), sum(saldo) OVER ()) AS pct_acumulado FROM f) SELECT *, CASE WHEN pct_acumulado <= 0.8 THEN 'A' WHEN pct_acumulado <= 0.95 THEN 'B' ELSE 'C' END AS classe FROM r WHERE ranking <= 30 ORDER BY ranking"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fin_pag",
+      "displayName": "Financeiro - pagamentos por mês",
+      "queryLines": [
+        "WITH m AS ( SELECT mes, sum(PAGO) AS valor_pago, count(DISTINCT REC) AS titulos, percentile_approx(prazo_dias, 0.5) AS prazo_mediano_dias, try_divide(sum(pago_atraso), sum(PAGO)) AS pct_pago_em_atraso, sum(JUROS + MULTA) AS juros_multa FROM quebec.gold.vw_fin_pagamentos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND mes IS NOT NULL GROUP BY mes), mm AS (SELECT *, avg(valor_pago) OVER (ORDER BY mes ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS media_movel_3m FROM m) SELECT * FROM mm WHERE mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fin_cc",
+      "displayName": "Financeiro - saldo por CC",
+      "queryLines": [
+        "SELECT centro_custo, sum(saldo) AS saldo, count(*) AS titulos FROM quebec.gold.vw_fin_titulos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND coalesce(dt_vencimento, dt_emissao) BETWEEN :data_inicio AND :data_fim AND grupo = 'Efetivo' GROUP BY centro_custo ORDER BY saldo DESC LIMIT 15"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fin_pag_cc",
+      "displayName": "Financeiro - pago por CC",
+      "queryLines": [
+        "SELECT centro_custo, sum(PAGO) AS valor_pago, count(DISTINCT REC) AS titulos FROM quebec.gold.vw_fin_pagamentos WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_pagamento BETWEEN :data_inicio AND :data_fim GROUP BY centro_custo ORDER BY valor_pago DESC LIMIT 15"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2000-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2099-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "fin_ccs",
+      "displayName": "Centros de custo (opções do filtro)",
+      "queryLines": [
+        "SELECT centro_custo FROM (SELECT 'Todos' AS centro_custo UNION SELECT centro_custo FROM quebec.gold.vw_fin_titulos UNION SELECT centro_custo FROM quebec.gold.vw_fin_pagamentos) WHERE centro_custo IS NOT NULL ORDER BY CASE WHEN centro_custo = 'Todos' THEN 0 ELSE 1 END, centro_custo"
+      ]
+    },
+    {
+      "name": "filiais",
+      "displayName": "Filiais (opções do filtro)",
+      "queryLines": [
+        "SELECT filial FROM (SELECT 'Todas' AS filial UNION SELECT filial FROM quebec.gold.vw_fin_titulos UNION SELECT filial FROM quebec.gold.vw_fin_pagamentos) WHERE filial IS NOT NULL ORDER BY CASE WHEN filial = 'Todas' THEN 0 ELSE 1 END, filial"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_017",
+      "displayName": "Financeiro",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_001",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Contas a pagar",
+                "**Como ler:** os títulos **provisórios (PR)** são previsões e ficam separados do saldo **efetivo**. O *aging* mostra quanto do saldo está vencido e há quanto tempo.",
+                "O **HHI** mede a concentração da dívida por fornecedor (0 a 10.000; acima de 2.500 = alta). O **Pareto** mostra quantos fornecedores somam 80% do saldo (classe A).",
+                "**Filtros:** o período vale para o vencimento dos títulos em aberto e para a data dos pagamentos. O centro de custo é o principal do título (o de maior valor no rateio)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_018",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_kpi_filial",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_aging_filial",
+                "query": {
+                  "datasetName": "fin_aging",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_fluxo_filial",
+                "query": {
+                  "datasetName": "fin_fluxo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pareto_filial",
+                "query": {
+                  "datasetName": "fin_pareto",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pag_filial",
+                "query": {
+                  "datasetName": "fin_pag",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_cc_filial",
+                "query": {
+                  "datasetName": "fin_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pag_cc_filial",
+                "query": {
+                  "datasetName": "fin_pag_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_fin_kpi_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_fin_aging_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_fin_fluxo_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_fin_pareto_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_fin_pag_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_fin_cc_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_fin_pag_cc_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_016",
+            "queries": [
+              {
+                "name": "dashboards_fin_ccs_centro_custo",
+                "query": {
+                  "datasetName": "fin_ccs",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_kpi_centro_custo",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_aging_centro_custo",
+                "query": {
+                  "datasetName": "fin_aging",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_fluxo_centro_custo",
+                "query": {
+                  "datasetName": "fin_fluxo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pareto_centro_custo",
+                "query": {
+                  "datasetName": "fin_pareto",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pag_centro_custo",
+                "query": {
+                  "datasetName": "fin_pag",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_cc_centro_custo",
+                "query": {
+                  "datasetName": "fin_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pag_cc_centro_custo",
+                "query": {
+                  "datasetName": "fin_pag_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo",
+                    "queryName": "dashboards_fin_ccs_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_fin_kpi_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_fin_aging_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_fin_fluxo_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_fin_pareto_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_fin_pag_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_fin_cc_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_fin_pag_cc_centro_custo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Centro de custo"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_019",
+            "queries": [
+              {
+                "name": "parameter_fin_kpi_data_inicio",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_aging_data_inicio",
+                "query": {
+                  "datasetName": "fin_aging",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_fluxo_data_inicio",
+                "query": {
+                  "datasetName": "fin_fluxo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pareto_data_inicio",
+                "query": {
+                  "datasetName": "fin_pareto",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pag_data_inicio",
+                "query": {
+                  "datasetName": "fin_pag",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_cc_data_inicio",
+                "query": {
+                  "datasetName": "fin_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pag_cc_data_inicio",
+                "query": {
+                  "datasetName": "fin_pag_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_fin_kpi_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_fin_aging_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_fin_fluxo_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_fin_pareto_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_fin_pag_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_fin_cc_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_fin_pag_cc_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Vencimento/pagamento de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_020",
+            "queries": [
+              {
+                "name": "parameter_fin_kpi_data_fim",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_aging_data_fim",
+                "query": {
+                  "datasetName": "fin_aging",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_fluxo_data_fim",
+                "query": {
+                  "datasetName": "fin_fluxo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pareto_data_fim",
+                "query": {
+                  "datasetName": "fin_pareto",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pag_data_fim",
+                "query": {
+                  "datasetName": "fin_pag",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_cc_data_fim",
+                "query": {
+                  "datasetName": "fin_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_fin_pag_cc_data_fim",
+                "query": {
+                  "datasetName": "fin_pag_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_fin_kpi_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_fin_aging_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_fin_fluxo_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_fin_pareto_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_fin_pag_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_fin_cc_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_fin_pag_cc_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Vencimento/pagamento até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_002",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "saldo_efetivo",
+                      "expression": "`saldo_efetivo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "saldo_efetivo",
+                  "displayName": "Saldo efetivo a pagar",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldo efetivo a pagar"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_003",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "saldo_vencido",
+                      "expression": "`saldo_vencido`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "saldo_vencido",
+                  "displayName": "Saldo vencido",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldo vencido"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_004",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_vencido",
+                      "expression": "`pct_vencido`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_vencido",
+                  "displayName": "% vencido",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% vencido"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_005",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "saldo_provisorio",
+                      "expression": "`saldo_provisorio`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "saldo_provisorio",
+                  "displayName": "Provisórios (PR)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Provisórios (PR)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_006",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "qtd_titulos",
+                      "expression": "`qtd_titulos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "qtd_titulos",
+                  "displayName": "Títulos em aberto",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Títulos em aberto"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_007",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "hhi_fornecedores",
+                      "expression": "`hhi_fornecedores`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "hhi_fornecedores",
+                  "displayName": "HHI fornecedores",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "HHI fornecedores"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_008",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_aging",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "faixa",
+                      "expression": "`faixa`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "faixa",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Faixa"
+                },
+                "y": {
+                  "fieldName": "saldo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Saldo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "grupo",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Grupo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Aging do saldo",
+                "showDescription": true,
+                "description": "Saldo por faixa de vencimento, separando provisórios"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_009",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_fluxo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "semana",
+                      "expression": "`semana`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "semana",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Semana"
+                },
+                "y": {
+                  "fieldName": "saldo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Saldo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "grupo",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Grupo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Vencimentos das próximas 12 semanas"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 7,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_010",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pareto",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "saldo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Saldo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "fornecedor",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Fornecedor"
+                },
+                "color": {
+                  "fieldName": "classe",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Classe ABC"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 30 fornecedores (saldo efetivo)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 14,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_011",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pareto",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "ranking",
+                      "expression": "`ranking`"
+                    },
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "pct",
+                      "expression": "`pct`"
+                    },
+                    {
+                      "name": "pct_acumulado",
+                      "expression": "`pct_acumulado`"
+                    },
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "ranking",
+                    "displayName": "#"
+                  },
+                  {
+                    "fieldName": "fornecedor",
+                    "displayName": "Fornecedor"
+                  },
+                  {
+                    "fieldName": "saldo",
+                    "displayName": "Saldo"
+                  },
+                  {
+                    "fieldName": "pct",
+                    "displayName": "% do total"
+                  },
+                  {
+                    "fieldName": "pct_acumulado",
+                    "displayName": "% acumulado"
+                  },
+                  {
+                    "fieldName": "classe",
+                    "displayName": "Classe"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pareto de fornecedores"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 14,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "line_012",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pag",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor_pago",
+                      "expression": "`valor_pago`"
+                    },
+                    {
+                      "name": "media_movel_3m",
+                      "expression": "`media_movel_3m`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "valor_pago",
+                      "displayName": "Pago no mês"
+                    },
+                    {
+                      "fieldName": "media_movel_3m",
+                      "displayName": "Média móvel 3m"
+                    }
+                  ],
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pagamentos por mês e média móvel de 3 meses"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 22,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "line_013",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pag",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "pct_pago_em_atraso",
+                      "expression": "`pct_pago_em_atraso`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "pct_pago_em_atraso",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "% em atraso",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% pago após o vencimento",
+                "showDescription": true,
+                "description": "Parcela do valor pago depois do vencimento real"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 22,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_014",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_cc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "saldo",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Saldo",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "centro_custo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Centro de custo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldo efetivo a pagar por centro de custo (top 15)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 29,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_015",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "fin_pag_cc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "valor_pago",
+                      "expression": "`valor_pago`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "valor_pago",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Pago",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "centro_custo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Centro de custo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pago no período por centro de custo (top 15)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 29,
+            "width": 3,
+            "height": 7
+          }
+        }
+      ]
+    }
+  ]
+}

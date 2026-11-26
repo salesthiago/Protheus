@@ -1,0 +1,893 @@
+{
+  "datasets": [
+    {
+      "name": "est_kpi",
+      "displayName": "Estoque - KPIs",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_kpi WHERE filial = :filial"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "est_abc",
+      "displayName": "Estoque - curva ABC",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_abc WHERE filial = :filial ORDER BY classe"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "est_fech",
+      "displayName": "Estoque - fechamentos",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_fechamentos WHERE filial = :filial ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "est_aj",
+      "displayName": "Estoque - ajustes",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_ajustes_mes WHERE filial = :filial ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "est_par",
+      "displayName": "Estoque - itens parados",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_est_parados WHERE (:filial = 'Todas' OR filial = :filial) ORDER BY valor DESC LIMIT 200"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "filiais",
+      "displayName": "Filiais (opções do filtro)",
+      "queryLines": [
+        "SELECT filial FROM (SELECT 'Todas' AS filial UNION SELECT filial FROM quebec.gold.vw_est_kpi UNION SELECT filial FROM quebec.gold.vw_est_abc UNION SELECT filial FROM quebec.gold.vw_est_fechamentos UNION SELECT filial FROM quebec.gold.vw_est_ajustes_mes UNION SELECT filial FROM quebec.gold.vw_est_parados) WHERE filial IS NOT NULL ORDER BY CASE WHEN filial = 'Todas' THEN 0 ELSE 1 END, filial"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_085",
+      "displayName": "Estoque",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_074",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Almoxarifado",
+                "**Curva ABC:** poucos itens (classe A) concentram 80% do valor e merecem controle mais rígido. **Parado:** item com saldo e sem saída há mais de 180 dias (ou nunca); é capital imobilizado.",
+                "**Saldo negativo** indica movimento fora de ordem ou erro de lançamento, e distorce o custo médio."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 4,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_086",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_est_kpi_filial",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_est_abc_filial",
+                "query": {
+                  "datasetName": "est_abc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_est_fech_filial",
+                "query": {
+                  "datasetName": "est_fech",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_est_aj_filial",
+                "query": {
+                  "datasetName": "est_aj",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_est_par_filial",
+                "query": {
+                  "datasetName": "est_par",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_est_kpi_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_est_abc_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_est_fech_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_est_aj_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_est_par_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_075",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valor_estoque",
+                      "expression": "`valor_estoque`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valor_estoque",
+                  "displayName": "Valor em estoque",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor em estoque"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_076",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valor_parado_180d",
+                      "expression": "`valor_parado_180d`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valor_parado_180d",
+                  "displayName": "Parado > 180 dias",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Parado > 180 dias"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_077",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_parado",
+                      "expression": "`pct_parado`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_parado",
+                  "displayName": "% parado",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% parado"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_078",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "itens_saldo_negativo",
+                      "expression": "`itens_saldo_negativo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "itens_saldo_negativo",
+                  "displayName": "Saldos negativos",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldos negativos"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_079",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "produtos",
+                      "expression": "`produtos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "produtos",
+                  "displayName": "Produtos",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Produtos"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_080",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_abc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "classe",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Classe"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Curva ABC: valor por classe"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_081",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_abc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    },
+                    {
+                      "name": "produtos",
+                      "expression": "`produtos`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "pct_valor",
+                      "expression": "`pct_valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "classe",
+                    "displayName": "Classe"
+                  },
+                  {
+                    "fieldName": "produtos",
+                    "displayName": "Produtos"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "pct_valor",
+                    "displayName": "% do valor"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Curva ABC"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 5,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "line_082",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_fech",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor do estoque nos fechamentos"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 5,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_083",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_aj",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "tipo",
+                      "expression": "`tipo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "color": {
+                  "fieldName": "tipo",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Tipo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Ajustes de estoque por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_084",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "est_par",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "produto",
+                      "expression": "`produto`"
+                    },
+                    {
+                      "name": "descricao",
+                      "expression": "`descricao`"
+                    },
+                    {
+                      "name": "grupo",
+                      "expression": "`grupo`"
+                    },
+                    {
+                      "name": "armazem",
+                      "expression": "`armazem`"
+                    },
+                    {
+                      "name": "quantidade",
+                      "expression": "`quantidade`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "sem_saida",
+                      "expression": "`sem_saida`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "produto",
+                    "displayName": "Produto"
+                  },
+                  {
+                    "fieldName": "descricao",
+                    "displayName": "Descrição"
+                  },
+                  {
+                    "fieldName": "grupo",
+                    "displayName": "Grupo"
+                  },
+                  {
+                    "fieldName": "armazem",
+                    "displayName": "Armazém"
+                  },
+                  {
+                    "fieldName": "quantidade",
+                    "displayName": "Qtd"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "sem_saida",
+                    "displayName": "Dias sem saída"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Itens parados de maior valor",
+                "showDescription": true,
+                "description": "Um registro por filial + produto + armazém. 'Nunca' = sem saída registrada"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 11,
+            "width": 4,
+            "height": 8
+          }
+        }
+      ]
+    }
+  ]
+}

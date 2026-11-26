@@ -1,0 +1,47 @@
+#INCLUDE "tlpp-core.th"
+
+namespace IntegraApiA2
+
+Class IntegraApiA2Controller
+	Data jResponse as Json
+	Data oService as Object
+
+	Public method new() as Object
+
+	@Get('/api/IntegraApiA2')
+	Public method get() as Logical
+
+EndClass
+
+Method new() as Object Class IntegraApiA2Controller
+	::oService := IntegraApiA2Service():new()
+	::jResponse := JsonObject():New()
+Return self
+
+Method get() as Logical Class IntegraApiA2Controller
+	Local cFields 	as Character
+	Local cSort 	as Character
+	Local cFilter 	as Character
+	Local nPage 	as Numeric
+	Local nPageSize as Numeric
+	Local cTable 	as Character
+	Local cModo 	as Character
+	Local cGrupo 	as Character
+	Local cFilGet 	as Character
+	Local cJoin 	as Character
+
+	cFields 	:= libapiA2.u_getQueryParam('FIELDS')
+	cSort 		:= libapiA2.u_getQueryParam('SORT')
+	cFilter 	:= libapiA2.u_getQueryParam('FILTER')
+	nPage 		:= libapiA2.u_getQueryParam('PAGE')
+	nPageSize 	:= libapiA2.u_getQueryParam('PAGESIZE')
+	cTable 		:= libapiA2.u_getQueryParam('TABLEGET')
+	cModo 		:= libapiA2.u_getQueryParam('MODO')
+	cGrupo 		:= libapiA2.u_getQueryParam('GRUPO')
+	cFilGet 	:= libapiA2.u_getQueryParam('FILIAL')
+	cJoin 		:= libapiA2.u_getQueryParam('JOIN')
+
+	oRest:setKeyHeaderResponse('Content-Type','application/json; charset=windows-1252')
+	oRest:setResponse(::oService:get(Val(nPage),Val(nPageSize),cFilter,cFields, cSort, cTable,cModo,cGrupo,cFilGet))
+
+Return .T.

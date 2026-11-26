@@ -18,6 +18,8 @@ Static __oArqTemp	:= Nil	//Variavel utilizada para a consulta padrão DX6GRP
 Static oMBrowse     := Nil
 Static lF10Exec     := .T.
 Static aParBal      := nil      // -- Será inicializada na funcao no Activate do Model (Devido a Error log se executado em MDI )--/
+Static dDtSessao    := Nil      // Data (Date()) em que a rotina foi aberta - controle da virada do dia
+Static oTmrVira     := Nil      // Timer que encerra a sessao na virada do dia (00h)
 /** {Protheus.doc} OGA190
 Rotina para pesagem avulsas em balanças cadastradas
 
@@ -30,6 +32,17 @@ user Function OGA190Q()
 	Local bKeyF10       := SetKey( VK_F10, { || OGA190VKF10(NJH->NJH_CODPAV) 			} )
 	Local bKeyF12       := SetKey( VK_F12, { || aParBal:= AGRX003E( .t., 'OGA050001' )   } )
 
+	dDtSessao := Date()
+
+	// Data base diferente do dia real: obriga novo login para evitar ticket com data errada
+	If dDataBase <> dDtSessao
+		Final( "Data base desatualizada", "A data base (" + DToC( dDataBase ) + ") difere da data atual (" + DToC( dDtSessao ) + "). Efetue novo login no Protheus." )
+	EndIf
+
+	// Verifica a cada 1 minuto se o dia virou; se virou, encerra a sessao (obriga novo login)
+	oTmrVira := TTimer():New( 60000, { || fVerVira() }, GetWndDefault() )
+	oTmrVira:Activate()
+
 	oMBrowse := FWMBrowse():New()
 	oMBrowse:SetAlias( "NJH" )
 	oMBrowse:SetDescription( STR0001 ) //"Pesagens Avulsas"
@@ -41,6 +54,10 @@ user Function OGA190Q()
 	oMBrowse:AddLegend( "NJH_STATUS=='4'", "BR_CANCEL"  , STR0037) //"Cancelada"
 	oMBrowse:DisableDetails()
 	oMBrowse:Activate()
+
+	If oTmrVira <> Nil
+		oTmrVira:DeActivate()
+	EndIf
 
 	SetKey( VK_F10, bKeyF10 )
 	SetKey( VK_F12, bKeyF12 )
@@ -212,8 +229,10 @@ Static Function GrvModelo( oModel )
 
 	EndIf
 
-	If nOperation == MODEL_OPERATION_INSERT .And. Empty( oModel:GetValue( "NJHUNICO", "NJH_DATA" ) )
-		oModel:SetValue( "NJHUNICO", "NJH_DATA", Date() ) //Date() ao inves de dDataBase: dDataBase fica "presa" na data de abertura da tela e nao acompanha a virada do dia
+	If nOperation == MODEL_OPERATION_INSERT
+		// Sempre grava a data real: o inicializador do campo (dDataBase) preenche NJH_DATA na abertura
+		// da tela, entao o teste Empty() nunca era verdadeiro e o ticket ficava com a data do dia anterior
+		oModel:SetValue( "NJHUNICO", "NJH_DATA", Date() )
 	EndIf
 
 	FWFormCommit( oModel )
@@ -564,6 +583,27 @@ Static Function fFimModelo( oModel )
 	lF10Exec := .T.
 
 Return(.t.)
+
+/** {Protheus.doc} fVerVira
+Executada pelo timer a cada 1 minuto. Se o dia virou desde a abertura da rotina,
+encerra a sessao do Protheus obrigando novo login (dDataBase passa a ser a data correta).
+Nao encerra no meio de uma pesagem/tela de inclusao: aguarda o proximo ciclo do timer.
+*/
+Static Function fVerVira()
+
+	If dDtSessao == Nil .Or. Date() == dDtSessao
+		Return Nil
+	EndIf
+
+	// Tela de pesagem/inclusao aberta: aguarda fechar para nao perder o ticket
+	If !lF10Exec .Or. IsInCallStack( "OGA190PESA" ) .Or. IsInCallStack( "AGRX03AQ" )
+		Return Nil
+	EndIf
+
+	oTmrVira:DeActivate()
+	Final( "Virada do dia", "Sessao encerrada automaticamente na virada do dia (" + DToC( Date() ) + "). Efetue novo login no Protheus." )
+
+Return Nil
 
 /** {Protheus.doc} OGA190REL
 Função que executa o relatório OGR190

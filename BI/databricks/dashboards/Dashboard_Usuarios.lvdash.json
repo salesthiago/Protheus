@@ -1,0 +1,1668 @@
+{
+  "datasets": [
+    {
+      "name": "usr_kpi",
+      "displayName": "Usuários - KPIs",
+      "queryLines": [
+        "WITH h AS (SELECT dia, hora, count(DISTINCT usuario_id) AS n FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY 1, 2), d AS (SELECT dia, count(DISTINCT usuario_id) AS n FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY 1) SELECT count_if(NOT bloqueado) AS ativos, count_if(NOT bloqueado AND dias_sem_acesso <= 30) AS acessaram_30d, count_if(sem_acesso_30d) AS sem_acesso_30d, count_if(NOT bloqueado AND ultimo_acesso IS NULL) AS nunca_acessaram, count_if(bloqueado) AS bloqueados, (SELECT max(n) FROM h) AS pico_hora, (SELECT max(n) FROM d) AS pico_dia, (SELECT round(avg(n), 1) FROM d WHERE dayofweek(dia) BETWEEN 2 AND 6) AS media_dia_util, (SELECT count(DISTINCT usuario_id) FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim) AS usuarios_no_periodo FROM quebec.gold.vw_usr_usuarios"
+      ],
+      "parameters": [
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2025-11-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "usr_dia",
+      "displayName": "Usuários - acessos por dia",
+      "queryLines": [
+        "WITH h AS (SELECT dia, hora, count(DISTINCT usuario_id) AS n FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY 1, 2) SELECT a.dia, count(DISTINCT a.usuario_id) AS usuarios, (SELECT max(n) FROM h WHERE h.dia = a.dia) AS pico_hora FROM quebec.gold.vw_usr_acessos a WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY a.dia ORDER BY a.dia"
+      ],
+      "parameters": [
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2025-11-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "usr_mes",
+      "displayName": "Usuários - acessos por mês",
+      "queryLines": [
+        "WITH d AS (SELECT mes, dia, count(DISTINCT usuario_id) AS n FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY 1, 2), h AS (SELECT mes, dia, hora, count(DISTINCT usuario_id) AS n FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY 1, 2, 3) SELECT m.mes, m.usuarios, d.media_dia_util, d.pico_dia, h.pico_hora FROM (SELECT mes, count(DISTINCT usuario_id) AS usuarios FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY 1) m LEFT JOIN (SELECT mes, round(avg(CASE WHEN dayofweek(dia) BETWEEN 2 AND 6 THEN n END), 1) AS media_dia_util, max(n) AS pico_dia FROM d GROUP BY 1) d ON d.mes = m.mes LEFT JOIN (SELECT mes, max(n) AS pico_hora FROM h GROUP BY 1) h ON h.mes = m.mes ORDER BY m.mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2025-11-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "usr_hora",
+      "displayName": "Usuários - perfil por hora",
+      "queryLines": [
+        "WITH h AS (SELECT dia, hora, count(DISTINCT usuario_id) AS n FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim AND dayofweek(dia) BETWEEN 2 AND 6 GROUP BY 1, 2) SELECT lpad(CAST(hora AS STRING), 2, '0') AS hora, round(avg(n), 1) AS media_usuarios, max(n) AS pico_usuarios FROM h GROUP BY 1 ORDER BY 1"
+      ],
+      "parameters": [
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2025-11-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "usr_lista",
+      "displayName": "Usuários - cadastro e uso",
+      "queryLines": [
+        "WITH p AS (SELECT usuario_id, count(DISTINCT dia) AS dias_acesso_periodo, sum(eventos) AS registros_periodo, min(primeiro_registro) AS primeiro_acesso_periodo, concat_ws(', ', array_sort(collect_set(modulo))) AS modulos_usados_periodo FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY 1) SELECT u.usuario_id, u.login, u.nome, u.email, u.departamento, u.cargo, u.situacao, u.ultimo_acesso, u.dias_sem_acesso, u.faixa_ultimo_acesso, CASE WHEN u.sem_acesso_30d THEN 'Sim' ELSE 'Não' END AS sem_acesso_30d, u.modulos_liberados, u.qtd_modulos_liberados, nullif(p.modulos_usados_periodo, '') AS modulos_usados_periodo, coalesce(p.dias_acesso_periodo, 0) AS dias_acesso_periodo, coalesce(p.registros_periodo, 0) AS registros_periodo, p.primeiro_acesso_periodo, 1 AS usuarios FROM quebec.gold.vw_usr_usuarios u LEFT JOIN p ON p.usuario_id = u.usuario_id ORDER BY u.bloqueado, u.ultimo_acesso NULLS FIRST"
+      ],
+      "parameters": [
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2025-11-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "usr_modulo",
+      "displayName": "Usuários - módulos",
+      "queryLines": [
+        "WITH p AS (SELECT DISTINCT usuario_id, modulo FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim AND modulo IS NOT NULL) SELECT m.modulo, u.nome, u.login, u.ultimo_acesso, u.dias_sem_acesso, u.faixa_ultimo_acesso, 1 AS usuarios, CASE WHEN u.sem_acesso_30d THEN 1 ELSE 0 END AS usuarios_sem_acesso_30d, CASE WHEN p.usuario_id IS NOT NULL THEN 1 ELSE 0 END AS usou_no_periodo FROM quebec.gold.vw_usr_modulos m JOIN quebec.gold.vw_usr_usuarios u ON u.usuario_id = m.usuario_id AND NOT u.bloqueado LEFT JOIN p ON p.usuario_id = m.usuario_id AND p.modulo = m.modulo WHERE m.liberado"
+      ],
+      "parameters": [
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2025-11-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "usr_hist",
+      "displayName": "Usuários - histórico mensal",
+      "queryLines": [
+        "SELECT mes, nome, login, count(DISTINCT dia) AS dias_com_acesso, count(DISTINCT dia, hora) AS horas_com_acesso, sum(eventos) AS registros, min(primeiro_registro) AS primeiro_acesso, max(ultimo_registro) AS ultimo_acesso, concat_ws(', ', array_sort(collect_set(modulo))) AS modulos_usados FROM quebec.gold.vw_usr_acessos WHERE dia BETWEEN :data_inicio AND :data_fim GROUP BY mes, nome, login ORDER BY mes DESC, dias_com_acesso DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2025-11-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_154",
+      "displayName": "Usuários e licenças",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_137",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Usuários do sistema e licenças",
+                "**Último acesso** = último registro do usuário na auditoria (TOTVS_AUDIT), em todo o histórico. **Sem acesso há 30+ dias** = ativos (não bloqueados) que não acessam há mais de 30 dias ou nunca acessaram: candidatos a bloquear e liberar a licença.",
+                "**Pico na mesma hora** = máximo de usuários distintos com registro na mesma hora; é a melhor aproximação do uso simultâneo que a auditoria permite (o número exato de conexões fica no License Server).",
+                "**Período:** vale só para o histórico (dias, meses, perfil por hora e módulos usados). Clique numa faixa ou num módulo para filtrar a tabela ao lado."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_155",
+            "queries": [
+              {
+                "name": "parameter_usr_kpi_data_inicio",
+                "query": {
+                  "datasetName": "usr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_dia_data_inicio",
+                "query": {
+                  "datasetName": "usr_dia",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_mes_data_inicio",
+                "query": {
+                  "datasetName": "usr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_hora_data_inicio",
+                "query": {
+                  "datasetName": "usr_hora",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_lista_data_inicio",
+                "query": {
+                  "datasetName": "usr_lista",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_modulo_data_inicio",
+                "query": {
+                  "datasetName": "usr_modulo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_hist_data_inicio",
+                "query": {
+                  "datasetName": "usr_hist",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_usr_kpi_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_usr_dia_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_usr_mes_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_usr_hora_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_usr_lista_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_usr_modulo_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_usr_hist_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Acesso de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 1,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_156",
+            "queries": [
+              {
+                "name": "parameter_usr_kpi_data_fim",
+                "query": {
+                  "datasetName": "usr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_dia_data_fim",
+                "query": {
+                  "datasetName": "usr_dia",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_mes_data_fim",
+                "query": {
+                  "datasetName": "usr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_hora_data_fim",
+                "query": {
+                  "datasetName": "usr_hora",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_lista_data_fim",
+                "query": {
+                  "datasetName": "usr_lista",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_modulo_data_fim",
+                "query": {
+                  "datasetName": "usr_modulo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_usr_hist_data_fim",
+                "query": {
+                  "datasetName": "usr_hist",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_usr_kpi_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_usr_dia_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_usr_mes_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_usr_hora_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_usr_lista_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_usr_modulo_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_usr_hist_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Acesso até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "filtro_138",
+            "queries": [
+              {
+                "name": "campo_usr_lista_nome",
+                "query": {
+                  "datasetName": "usr_lista",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "nome",
+                      "expression": "`nome`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "campo_usr_hist_nome",
+                "query": {
+                  "datasetName": "usr_hist",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "nome",
+                      "expression": "`nome`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "nome",
+                    "displayName": "Usuário",
+                    "queryName": "campo_usr_lista_nome"
+                  },
+                  {
+                    "fieldName": "nome",
+                    "displayName": "Usuário",
+                    "queryName": "campo_usr_hist_nome"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuário"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filtro_139",
+            "queries": [
+              {
+                "name": "campo_usr_lista_situacao",
+                "query": {
+                  "datasetName": "usr_lista",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "situacao",
+                      "expression": "`situacao`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "situacao",
+                    "displayName": "Situação",
+                    "queryName": "campo_usr_lista_situacao"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Situação"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_140",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "ativos",
+                      "expression": "`ativos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "ativos",
+                  "displayName": "Usuários ativos",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuários ativos"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_141",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "acessaram_30d",
+                      "expression": "`acessaram_30d`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "acessaram_30d",
+                  "displayName": "Acessaram nos últimos 30 dias",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Acessaram nos últimos 30 dias"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_142",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "sem_acesso_30d",
+                      "expression": "`sem_acesso_30d`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sem_acesso_30d",
+                  "displayName": "Ativos sem acesso há 30+ dias",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Ativos sem acesso há 30+ dias"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_143",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "nunca_acessaram",
+                      "expression": "`nunca_acessaram`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "nunca_acessaram",
+                  "displayName": "Ativos que nunca acessaram",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Ativos que nunca acessaram"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_144",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pico_hora",
+                      "expression": "`pico_hora`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pico_hora",
+                  "displayName": "Pico na mesma hora (período)",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pico na mesma hora (período)"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_145",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "media_dia_util",
+                      "expression": "`media_dia_util`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "media_dia_util",
+                  "displayName": "Média de usuários por dia útil",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Média de usuários por dia útil"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_146",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_lista",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "faixa_ultimo_acesso",
+                      "expression": "`faixa_ultimo_acesso`"
+                    },
+                    {
+                      "name": "sum(usuarios)",
+                      "expression": "SUM(`usuarios`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "faixa_ultimo_acesso",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Último acesso"
+                },
+                "y": {
+                  "fieldName": "sum(usuarios)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Usuários"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuários por tempo desde o último acesso",
+                "showDescription": true,
+                "description": "Clique numa faixa para ver os usuários na tabela abaixo"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 2,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "line_147",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_dia",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "dia",
+                      "expression": "`dia`"
+                    },
+                    {
+                      "name": "usuarios",
+                      "expression": "`usuarios`"
+                    },
+                    {
+                      "name": "pico_hora",
+                      "expression": "`pico_hora`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "dia",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Dia"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "usuarios",
+                      "displayName": "Usuários distintos no dia"
+                    },
+                    {
+                      "fieldName": "pico_hora",
+                      "displayName": "Pico na mesma hora"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuários por dia"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 7,
+            "width": 4,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_148",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_lista",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "nome",
+                      "expression": "`nome`"
+                    },
+                    {
+                      "name": "login",
+                      "expression": "`login`"
+                    },
+                    {
+                      "name": "usuario_id",
+                      "expression": "`usuario_id`"
+                    },
+                    {
+                      "name": "situacao",
+                      "expression": "`situacao`"
+                    },
+                    {
+                      "name": "ultimo_acesso",
+                      "expression": "`ultimo_acesso`"
+                    },
+                    {
+                      "name": "dias_sem_acesso",
+                      "expression": "`dias_sem_acesso`"
+                    },
+                    {
+                      "name": "faixa_ultimo_acesso",
+                      "expression": "`faixa_ultimo_acesso`"
+                    },
+                    {
+                      "name": "sem_acesso_30d",
+                      "expression": "`sem_acesso_30d`"
+                    },
+                    {
+                      "name": "dias_acesso_periodo",
+                      "expression": "`dias_acesso_periodo`"
+                    },
+                    {
+                      "name": "modulos_liberados",
+                      "expression": "`modulos_liberados`"
+                    },
+                    {
+                      "name": "qtd_modulos_liberados",
+                      "expression": "`qtd_modulos_liberados`"
+                    },
+                    {
+                      "name": "modulos_usados_periodo",
+                      "expression": "`modulos_usados_periodo`"
+                    },
+                    {
+                      "name": "email",
+                      "expression": "`email`"
+                    },
+                    {
+                      "name": "departamento",
+                      "expression": "`departamento`"
+                    },
+                    {
+                      "name": "cargo",
+                      "expression": "`cargo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "nome",
+                    "displayName": "Nome"
+                  },
+                  {
+                    "fieldName": "login",
+                    "displayName": "Usuário"
+                  },
+                  {
+                    "fieldName": "usuario_id",
+                    "displayName": "Código"
+                  },
+                  {
+                    "fieldName": "situacao",
+                    "displayName": "Situação"
+                  },
+                  {
+                    "fieldName": "ultimo_acesso",
+                    "displayName": "Último acesso"
+                  },
+                  {
+                    "fieldName": "dias_sem_acesso",
+                    "displayName": "Dias sem acesso"
+                  },
+                  {
+                    "fieldName": "faixa_ultimo_acesso",
+                    "displayName": "Faixa"
+                  },
+                  {
+                    "fieldName": "sem_acesso_30d",
+                    "displayName": "Sem acesso 30+ dias"
+                  },
+                  {
+                    "fieldName": "dias_acesso_periodo",
+                    "displayName": "Dias com acesso no período"
+                  },
+                  {
+                    "fieldName": "modulos_liberados",
+                    "displayName": "Módulos liberados"
+                  },
+                  {
+                    "fieldName": "qtd_modulos_liberados",
+                    "displayName": "Qtd módulos"
+                  },
+                  {
+                    "fieldName": "modulos_usados_periodo",
+                    "displayName": "Módulos usados no período"
+                  },
+                  {
+                    "fieldName": "email",
+                    "displayName": "E-mail"
+                  },
+                  {
+                    "fieldName": "departamento",
+                    "displayName": "Departamento"
+                  },
+                  {
+                    "fieldName": "cargo",
+                    "displayName": "Cargo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuários: último acesso, módulos e uso no período"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 6,
+            "height": 10
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_149",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "usuarios",
+                      "expression": "`usuarios`"
+                    },
+                    {
+                      "name": "pico_dia",
+                      "expression": "`pico_dia`"
+                    },
+                    {
+                      "name": "pico_hora",
+                      "expression": "`pico_hora`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "usuarios",
+                      "displayName": "Usuários distintos"
+                    },
+                    {
+                      "fieldName": "pico_dia",
+                      "displayName": "Pico em um dia"
+                    },
+                    {
+                      "fieldName": "pico_hora",
+                      "displayName": "Pico na mesma hora"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuários por mês"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_150",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_hora",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "hora",
+                      "expression": "`hora`"
+                    },
+                    {
+                      "name": "media_usuarios",
+                      "expression": "`media_usuarios`"
+                    },
+                    {
+                      "name": "pico_usuarios",
+                      "expression": "`pico_usuarios`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "hora",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Hora"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "media_usuarios",
+                      "displayName": "Média"
+                    },
+                    {
+                      "fieldName": "pico_usuarios",
+                      "displayName": "Pico"
+                    }
+                  ]
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuários por hora do dia (dias úteis)"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 25,
+            "width": 3,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_151",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_modulo",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "modulo",
+                      "expression": "`modulo`"
+                    },
+                    {
+                      "name": "sum(usuarios)",
+                      "expression": "SUM(`usuarios`)"
+                    },
+                    {
+                      "name": "sum(usuarios_sem_acesso_30d)",
+                      "expression": "SUM(`usuarios_sem_acesso_30d`)"
+                    },
+                    {
+                      "name": "sum(usou_no_periodo)",
+                      "expression": "SUM(`usou_no_periodo`)"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "sum(usuarios)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Usuários"
+                },
+                "y": {
+                  "fieldName": "modulo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Módulo"
+                },
+                "extra": [
+                  {
+                    "fieldName": "sum(usuarios_sem_acesso_30d)",
+                    "displayName": "Sem acesso há 30+ dias"
+                  },
+                  {
+                    "fieldName": "sum(usou_no_periodo)",
+                    "displayName": "Usaram o módulo no período"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuários ativos por módulo liberado",
+                "showDescription": true,
+                "description": "Clique num módulo para ver quem tem acesso a ele"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 32,
+            "width": 3,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_152",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_modulo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "modulo",
+                      "expression": "`modulo`"
+                    },
+                    {
+                      "name": "nome",
+                      "expression": "`nome`"
+                    },
+                    {
+                      "name": "login",
+                      "expression": "`login`"
+                    },
+                    {
+                      "name": "ultimo_acesso",
+                      "expression": "`ultimo_acesso`"
+                    },
+                    {
+                      "name": "dias_sem_acesso",
+                      "expression": "`dias_sem_acesso`"
+                    },
+                    {
+                      "name": "faixa_ultimo_acesso",
+                      "expression": "`faixa_ultimo_acesso`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "modulo",
+                    "displayName": "Módulo"
+                  },
+                  {
+                    "fieldName": "nome",
+                    "displayName": "Nome"
+                  },
+                  {
+                    "fieldName": "login",
+                    "displayName": "Usuário"
+                  },
+                  {
+                    "fieldName": "ultimo_acesso",
+                    "displayName": "Último acesso"
+                  },
+                  {
+                    "fieldName": "dias_sem_acesso",
+                    "displayName": "Dias sem acesso"
+                  },
+                  {
+                    "fieldName": "faixa_ultimo_acesso",
+                    "displayName": "Faixa"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Usuários por módulo"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 32,
+            "width": 3,
+            "height": 9
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_153",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "usr_hist",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "nome",
+                      "expression": "`nome`"
+                    },
+                    {
+                      "name": "login",
+                      "expression": "`login`"
+                    },
+                    {
+                      "name": "dias_com_acesso",
+                      "expression": "`dias_com_acesso`"
+                    },
+                    {
+                      "name": "horas_com_acesso",
+                      "expression": "`horas_com_acesso`"
+                    },
+                    {
+                      "name": "registros",
+                      "expression": "`registros`"
+                    },
+                    {
+                      "name": "primeiro_acesso",
+                      "expression": "`primeiro_acesso`"
+                    },
+                    {
+                      "name": "ultimo_acesso",
+                      "expression": "`ultimo_acesso`"
+                    },
+                    {
+                      "name": "modulos_usados",
+                      "expression": "`modulos_usados`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "mes",
+                    "displayName": "Mês"
+                  },
+                  {
+                    "fieldName": "nome",
+                    "displayName": "Nome"
+                  },
+                  {
+                    "fieldName": "login",
+                    "displayName": "Usuário"
+                  },
+                  {
+                    "fieldName": "dias_com_acesso",
+                    "displayName": "Dias com acesso"
+                  },
+                  {
+                    "fieldName": "horas_com_acesso",
+                    "displayName": "Horas com acesso"
+                  },
+                  {
+                    "fieldName": "registros",
+                    "displayName": "Registros de auditoria"
+                  },
+                  {
+                    "fieldName": "primeiro_acesso",
+                    "displayName": "Primeiro acesso"
+                  },
+                  {
+                    "fieldName": "ultimo_acesso",
+                    "displayName": "Último acesso"
+                  },
+                  {
+                    "fieldName": "modulos_usados",
+                    "displayName": "Módulos usados"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Histórico mensal de acesso por usuário",
+                "showDescription": true,
+                "description": "Base para conferir com a TOTVS: dias e horas em que cada usuário teve registro no sistema"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 41,
+            "width": 6,
+            "height": 9
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -17,4 +17,5 @@
 
 User Function MTA140MNU()
 	aAdd(aRotina,{"Entrada NF-e","U_ACOMP004()" ,0,3,0,.F.})
+	
 Return

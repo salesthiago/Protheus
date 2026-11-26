@@ -1,0 +1,3075 @@
+{
+  "datasets": [
+    {
+      "name": "ctr_kpi",
+      "displayName": "Contratos - KPIs",
+      "queryLines": [
+        "WITH c AS (SELECT * FROM quebec.gold.vw_ctr_contratos c WHERE vigente AND (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR EXISTS (SELECT 1 FROM quebec.gold.vw_ctr_medicoes cm WHERE cm.cod_filial = c.cod_filial AND cm.contrato = c.contrato AND cm.centro_custo = :centro_custo)) AND (c.dt_inicio IS NULL OR c.dt_inicio <= :data_fim) AND (c.dt_fim IS NULL OR c.dt_fim >= :data_inicio)), r AS (SELECT * FROM quebec.gold.vw_ctr_revisoes_feitas c WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR EXISTS (SELECT 1 FROM quebec.gold.vw_ctr_medicoes cm WHERE cm.cod_filial = c.cod_filial AND cm.contrato = c.contrato AND cm.centro_custo = :centro_custo)) AND c.dt_revisao BETWEEN :data_inicio AND :data_fim), m AS (SELECT * FROM quebec.gold.vw_ctr_medicoes WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_entrega BETWEEN :data_inicio AND :data_fim) SELECT (SELECT count(*) FROM c) AS contratos_vigentes, (SELECT sum(vl_atual) FROM c) AS valor_contratado, (SELECT sum(saldo) FROM c) AS saldo_a_medir, (SELECT try_divide(sum(vl_atual - saldo), sum(vl_atual)) FROM c) AS pct_consumido, (SELECT sum(crescimento) FROM c) AS crescimento_valor, (SELECT try_divide(sum(crescimento), sum(vl_original)) FROM c) AS pct_crescimento, (SELECT count(alerta) FROM c) AS contratos_em_alerta, (SELECT count(DISTINCT cod_filial, contrato) FROM r) AS revisados_periodo, (SELECT coalesce(sum(impacto), 0) FROM r) AS impacto_revisoes_periodo, (SELECT sum(valor) FROM m) AS medido_periodo, (SELECT try_divide(sum(valor), greatest(1, months_between(date_trunc('MONTH', least(:data_fim, current_date())), date_trunc('MONTH', :data_inicio)) + 1)) FROM m) AS media_mensal_periodo, (SELECT count(DISTINCT cod_filial, contrato) FROM m) AS contratos_com_medicao"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_mes",
+      "displayName": "Contratos - medição por mês",
+      "queryLines": [
+        "WITH m AS ( SELECT mes, sum(valor) AS valor, count(DISTINCT cod_filial, contrato, medicao) AS medicoes, count(DISTINCT cod_filial, contrato) AS contratos FROM quebec.gold.vw_ctr_medicoes WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND mes IS NOT NULL GROUP BY mes), mm AS (SELECT *, avg(valor) OVER (ORDER BY mes ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS media_movel_3m FROM m) SELECT * FROM mm WHERE mes BETWEEN date_trunc('MONTH', :data_inicio) AND :data_fim ORDER BY mes"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_rev_tipo",
+      "displayName": "Contratos - impacto por tipo de revisão",
+      "queryLines": [
+        "SELECT tipo_revisao, count(*) AS revisoes, count(DISTINCT cod_filial, contrato) AS contratos, sum(impacto) AS impacto FROM quebec.gold.vw_ctr_revisoes_feitas c WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR EXISTS (SELECT 1 FROM quebec.gold.vw_ctr_medicoes cm WHERE cm.cod_filial = c.cod_filial AND cm.contrato = c.contrato AND cm.centro_custo = :centro_custo)) AND c.dt_revisao BETWEEN :data_inicio AND :data_fim GROUP BY tipo_revisao ORDER BY impacto DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_forn",
+      "displayName": "Contratos - Pareto de fornecedores",
+      "queryLines": [
+        "WITH f AS (SELECT fornecedor, sum(valor) AS valor, count(DISTINCT cod_filial, contrato) AS contratos FROM quebec.gold.vw_ctr_medicoes WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_entrega BETWEEN :data_inicio AND :data_fim GROUP BY fornecedor), r AS (SELECT *, row_number() OVER (ORDER BY valor DESC) AS ranking, try_divide(valor, sum(valor) OVER ()) AS pct, try_divide(sum(valor) OVER (ORDER BY valor DESC ROWS UNBOUNDED PRECEDING), sum(valor) OVER ()) AS pct_acumulado FROM f) SELECT *, CASE WHEN pct_acumulado <= 0.8 THEN 'A' WHEN pct_acumulado <= 0.95 THEN 'B' ELSE 'C' END AS classe FROM r WHERE ranking <= 15 ORDER BY ranking"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_cc",
+      "displayName": "Contratos - medido por CC",
+      "queryLines": [
+        "SELECT centro_custo, sum(valor) AS valor, count(DISTINCT cod_filial, contrato) AS contratos FROM quebec.gold.vw_ctr_medicoes WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_entrega BETWEEN :data_inicio AND :data_fim GROUP BY centro_custo ORDER BY valor DESC LIMIT 15"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_proj",
+      "displayName": "Contratos - medido por projeto",
+      "queryLines": [
+        "SELECT projeto, sum(valor) AS valor, count(DISTINCT cod_filial, contrato) AS contratos FROM quebec.gold.vw_ctr_medicoes WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR centro_custo = :centro_custo) AND dt_entrega BETWEEN :data_inicio AND :data_fim GROUP BY projeto ORDER BY valor DESC LIMIT 15"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_alertas",
+      "displayName": "Contratos - alertas",
+      "queryLines": [
+        "SELECT filial, contrato, fornecedor, tipo_contrato, alerta, dt_fim, dias_para_vencer, vl_original, vl_atual, saldo, pct_consumido, pct_crescimento FROM quebec.gold.vw_ctr_contratos c WHERE alerta IS NOT NULL AND (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR EXISTS (SELECT 1 FROM quebec.gold.vw_ctr_medicoes cm WHERE cm.cod_filial = c.cod_filial AND cm.contrato = c.contrato AND cm.centro_custo = :centro_custo)) ORDER BY alerta, saldo"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_rev_periodo",
+      "displayName": "Contratos - revisados no período",
+      "queryLines": [
+        "SELECT filial, contrato, revisao, dt_revisao, tipo_revisao, fornecedor, vl_atual, impacto FROM quebec.gold.vw_ctr_revisoes_feitas c WHERE (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR EXISTS (SELECT 1 FROM quebec.gold.vw_ctr_medicoes cm WHERE cm.cod_filial = c.cod_filial AND cm.contrato = c.contrato AND cm.centro_custo = :centro_custo)) AND c.dt_revisao BETWEEN :data_inicio AND :data_fim ORDER BY dt_revisao DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_vig",
+      "displayName": "Contratos - vigentes",
+      "queryLines": [
+        "SELECT * FROM quebec.gold.vw_ctr_contratos c WHERE vigente AND (:filial = 'Todas' OR filial = :filial) AND (:centro_custo = 'Todos' OR EXISTS (SELECT 1 FROM quebec.gold.vw_ctr_medicoes cm WHERE cm.cod_filial = c.cod_filial AND cm.contrato = c.contrato AND cm.centro_custo = :centro_custo)) AND (c.dt_inicio IS NULL OR c.dt_inicio <= :data_fim) AND (c.dt_fim IS NULL OR c.dt_fim >= :data_inicio) ORDER BY vl_atual DESC"
+      ],
+      "parameters": [
+        {
+          "displayName": "filial",
+          "keyword": "filial",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_inicio",
+          "keyword": "data_inicio",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-01-01T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "data_fim",
+          "keyword": "data_fim",
+          "dataType": "DATE",
+          "defaultSelection": {
+            "values": {
+              "dataType": "DATE",
+              "values": [
+                {
+                  "value": "2026-12-31T00:00:00.000"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "displayName": "centro_custo",
+          "keyword": "centro_custo",
+          "dataType": "STRING",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": [
+                {
+                  "value": "Todos"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ctr_ccs",
+      "displayName": "Centros de custo (opções do filtro)",
+      "queryLines": [
+        "SELECT centro_custo FROM (SELECT 'Todos' AS centro_custo UNION SELECT centro_custo FROM quebec.gold.vw_ctr_medicoes) WHERE centro_custo IS NOT NULL ORDER BY CASE WHEN centro_custo = 'Todos' THEN 0 ELSE 1 END, centro_custo"
+      ]
+    },
+    {
+      "name": "filiais",
+      "displayName": "Filiais (opções do filtro)",
+      "queryLines": [
+        "SELECT filial FROM (SELECT 'Todas' AS filial UNION SELECT filial FROM quebec.gold.vw_ctr_contratos UNION SELECT filial FROM quebec.gold.vw_ctr_revisoes_feitas UNION SELECT filial FROM quebec.gold.vw_ctr_medicoes) WHERE filial IS NOT NULL ORDER BY CASE WHEN filial = 'Todas' THEN 0 ELSE 1 END, filial"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "pg_122",
+      "displayName": "Visão estratégica",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_103",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Contratos de compra: custo contratado, consumido e crescimento",
+                "**Contratado × consumido:** contratos vigentes cuja vigência cruza o período, e quanto já foi medido. **Crescimento:** quanto o valor atual passou do valor original (aditivos e reajustes); é custo que não estava no orçamento inicial.",
+                "**Filtros:** o período vale para medições (data de entrega), revisões (data da revisão) e vigência dos contratos. O centro de custo vem dos itens medidos: um contrato entra no CC quando tem medição nele. Os alertas são a situação de hoje e não seguem o período."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_131",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_kpi_filial",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_mes_filial",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_rev_tipo_filial",
+                "query": {
+                  "datasetName": "ctr_rev_tipo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_forn_filial",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_cc_filial",
+                "query": {
+                  "datasetName": "ctr_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_alertas_filial",
+                "query": {
+                  "datasetName": "ctr_alertas",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_kpi_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_mes_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_rev_tipo_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_forn_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_cc_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_alertas_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_121",
+            "queries": [
+              {
+                "name": "dashboards_ctr_ccs_centro_custo",
+                "query": {
+                  "datasetName": "ctr_ccs",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_kpi_centro_custo",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_mes_centro_custo",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_rev_tipo_centro_custo",
+                "query": {
+                  "datasetName": "ctr_rev_tipo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_forn_centro_custo",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_cc_centro_custo",
+                "query": {
+                  "datasetName": "ctr_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_alertas_centro_custo",
+                "query": {
+                  "datasetName": "ctr_alertas",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo",
+                    "queryName": "dashboards_ctr_ccs_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_kpi_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_mes_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_rev_tipo_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_forn_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_cc_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_alertas_centro_custo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Centro de custo"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_132",
+            "queries": [
+              {
+                "name": "parameter_ctr_kpi_data_inicio",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_mes_data_inicio",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_rev_tipo_data_inicio",
+                "query": {
+                  "datasetName": "ctr_rev_tipo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_forn_data_inicio",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_cc_data_inicio",
+                "query": {
+                  "datasetName": "ctr_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_kpi_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_mes_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_rev_tipo_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_forn_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_cc_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_133",
+            "queries": [
+              {
+                "name": "parameter_ctr_kpi_data_fim",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_mes_data_fim",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_rev_tipo_data_fim",
+                "query": {
+                  "datasetName": "ctr_rev_tipo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_forn_data_fim",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_cc_data_fim",
+                "query": {
+                  "datasetName": "ctr_cc",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_kpi_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_mes_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_rev_tipo_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_forn_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_cc_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_104",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "valor_contratado",
+                      "expression": "`valor_contratado`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "valor_contratado",
+                  "displayName": "Valor contratado (vigentes)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor contratado (vigentes)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_105",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "saldo_a_medir",
+                      "expression": "`saldo_a_medir`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "saldo_a_medir",
+                  "displayName": "Saldo a medir",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Saldo a medir"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_106",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_consumido",
+                      "expression": "`pct_consumido`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_consumido",
+                  "displayName": "% consumido",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% consumido"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_107",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "crescimento_valor",
+                      "expression": "`crescimento_valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "crescimento_valor",
+                  "displayName": "Crescimento vs. valor original",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Crescimento vs. valor original"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_108",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "pct_crescimento",
+                      "expression": "`pct_crescimento`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "pct_crescimento",
+                  "displayName": "% de crescimento",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "% de crescimento"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_109",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "medido_periodo",
+                      "expression": "`medido_periodo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "medido_periodo",
+                  "displayName": "Medido no período",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Medido no período"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 4,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_110",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "contratos_vigentes",
+                      "expression": "`contratos_vigentes`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "contratos_vigentes",
+                  "displayName": "Contratos vigentes",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Contratos vigentes"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_111",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "revisados_periodo",
+                      "expression": "`revisados_periodo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "revisados_periodo",
+                  "displayName": "Contratos revisados no período",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Contratos revisados no período"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 7,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_112",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "impacto_revisoes_periodo",
+                      "expression": "`impacto_revisoes_periodo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "impacto_revisoes_periodo",
+                  "displayName": "Impacto das revisões no período",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Impacto das revisões no período"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 7,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_113",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "media_mensal_periodo",
+                      "expression": "`media_mensal_periodo`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "media_mensal_periodo",
+                  "displayName": "Média mensal medida",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Média mensal medida"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 7,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_114",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "contratos_com_medicao",
+                      "expression": "`contratos_com_medicao`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "contratos_com_medicao",
+                  "displayName": "Contratos com medição no período",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Contratos com medição no período"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 7,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi_115",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_kpi",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "contratos_em_alerta",
+                      "expression": "`contratos_em_alerta`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "contratos_em_alerta",
+                  "displayName": "Contratos em alerta",
+                  "format": {
+                    "type": "number-plain",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Contratos em alerta"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 7,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "line_116",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "media_movel_3m",
+                      "expression": "`media_movel_3m`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "fields": [
+                    {
+                      "fieldName": "valor",
+                      "displayName": "Medido no mês"
+                    },
+                    {
+                      "fieldName": "media_movel_3m",
+                      "displayName": "Média móvel 3m"
+                    }
+                  ],
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor medido por mês e média móvel de 3 meses"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 4,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_117",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_rev_tipo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "tipo_revisao",
+                      "expression": "`tipo_revisao`"
+                    },
+                    {
+                      "name": "impacto",
+                      "expression": "`impacto`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "impacto",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Impacto",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "tipo_revisao",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Tipo de revisão"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Quanto as revisões acrescentaram no período",
+                "showDescription": true,
+                "description": "Variação no valor do contrato a cada revisão, por tipo"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 10,
+            "width": 2,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_118",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "fornecedor",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Fornecedor"
+                },
+                "color": {
+                  "fieldName": "classe",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Classe ABC"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 15 fornecedores por valor medido no período"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_119",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_cc",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "centro_custo",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Centro de custo"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor medido por centro de custo no período"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 17,
+            "width": 3,
+            "height": 8
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_120",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_alertas",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "alerta",
+                      "expression": "`alerta`"
+                    },
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "contrato",
+                      "expression": "`contrato`"
+                    },
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "dt_fim",
+                      "expression": "`dt_fim`"
+                    },
+                    {
+                      "name": "dias_para_vencer",
+                      "expression": "`dias_para_vencer`"
+                    },
+                    {
+                      "name": "vl_original",
+                      "expression": "`vl_original`"
+                    },
+                    {
+                      "name": "vl_atual",
+                      "expression": "`vl_atual`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "pct_consumido",
+                      "expression": "`pct_consumido`"
+                    },
+                    {
+                      "name": "pct_crescimento",
+                      "expression": "`pct_crescimento`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "alerta",
+                    "displayName": "Alerta"
+                  },
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "contrato",
+                    "displayName": "Contrato"
+                  },
+                  {
+                    "fieldName": "fornecedor",
+                    "displayName": "Fornecedor"
+                  },
+                  {
+                    "fieldName": "dt_fim",
+                    "displayName": "Fim"
+                  },
+                  {
+                    "fieldName": "dias_para_vencer",
+                    "displayName": "Dias p/ vencer"
+                  },
+                  {
+                    "fieldName": "vl_original",
+                    "displayName": "Valor original"
+                  },
+                  {
+                    "fieldName": "vl_atual",
+                    "displayName": "Valor atual"
+                  },
+                  {
+                    "fieldName": "saldo",
+                    "displayName": "Saldo"
+                  },
+                  {
+                    "fieldName": "pct_consumido",
+                    "displayName": "% consumido"
+                  },
+                  {
+                    "fieldName": "pct_crescimento",
+                    "displayName": "% crescimento"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Contratos que pedem ação",
+                "showDescription": true,
+                "description": "Vigentes com saldo quase esgotado, prazo vencido ou próximo, ou crescimento de 25% ou mais (situação de hoje)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 25,
+            "width": 6,
+            "height": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "pg_130",
+      "displayName": "Revisões e medições",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt_123",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Revisões e medições",
+                "**Revisados no período:** cada revisão concluída entre as datas escolhidas, com o tipo e o impacto no valor do contrato.",
+                "**Projetos:** valor medido por classe de valor (projeto) no período. A tabela final lista os contratos vigentes no período com o consumo de cada um."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_134",
+            "queries": [
+              {
+                "name": "dashboards_filiais_filial",
+                "query": {
+                  "datasetName": "filiais",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_rev_periodo_filial",
+                "query": {
+                  "datasetName": "ctr_rev_periodo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_proj_filial",
+                "query": {
+                  "datasetName": "ctr_proj",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_mes_filial",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_forn_filial",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_vig_filial",
+                "query": {
+                  "datasetName": "ctr_vig",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "filial",
+                      "keyword": "filial"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial",
+                    "queryName": "dashboards_filiais_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_rev_periodo_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_proj_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_mes_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_forn_filial"
+                  },
+                  {
+                    "parameterName": "filial",
+                    "queryName": "parameter_ctr_vig_filial"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filial"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_129",
+            "queries": [
+              {
+                "name": "dashboards_ctr_ccs_centro_custo",
+                "query": {
+                  "datasetName": "ctr_ccs",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "centro_custo",
+                      "expression": "`centro_custo`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_mes_centro_custo",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_forn_centro_custo",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_proj_centro_custo",
+                "query": {
+                  "datasetName": "ctr_proj",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_rev_periodo_centro_custo",
+                "query": {
+                  "datasetName": "ctr_rev_periodo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_vig_centro_custo",
+                "query": {
+                  "datasetName": "ctr_vig",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "centro_custo",
+                      "keyword": "centro_custo"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "centro_custo",
+                    "displayName": "Centro de custo",
+                    "queryName": "dashboards_ctr_ccs_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_mes_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_forn_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_proj_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_rev_periodo_centro_custo"
+                  },
+                  {
+                    "parameterName": "centro_custo",
+                    "queryName": "parameter_ctr_vig_centro_custo"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Centro de custo"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_135",
+            "queries": [
+              {
+                "name": "parameter_ctr_mes_data_inicio",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_forn_data_inicio",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_proj_data_inicio",
+                "query": {
+                  "datasetName": "ctr_proj",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_rev_periodo_data_inicio",
+                "query": {
+                  "datasetName": "ctr_rev_periodo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_vig_data_inicio",
+                "query": {
+                  "datasetName": "ctr_vig",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_inicio",
+                      "keyword": "data_inicio"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_mes_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_forn_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_proj_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_rev_periodo_data_inicio"
+                  },
+                  {
+                    "parameterName": "data_inicio",
+                    "queryName": "parameter_ctr_vig_data_inicio"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período de"
+              }
+            }
+          }
+        },
+        {
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          },
+          "widget": {
+            "name": "filtro_136",
+            "queries": [
+              {
+                "name": "parameter_ctr_mes_data_fim",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_forn_data_fim",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_proj_data_fim",
+                "query": {
+                  "datasetName": "ctr_proj",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_rev_periodo_data_fim",
+                "query": {
+                  "datasetName": "ctr_rev_periodo",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "parameter_ctr_vig_data_fim",
+                "query": {
+                  "datasetName": "ctr_vig",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "data_fim",
+                      "keyword": "data_fim"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_mes_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_forn_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_proj_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_rev_periodo_data_fim"
+                  },
+                  {
+                    "parameterName": "data_fim",
+                    "queryName": "parameter_ctr_vig_data_fim"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Período até"
+              }
+            }
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_124",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_rev_periodo",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "contrato",
+                      "expression": "`contrato`"
+                    },
+                    {
+                      "name": "revisao",
+                      "expression": "`revisao`"
+                    },
+                    {
+                      "name": "dt_revisao",
+                      "expression": "`dt_revisao`"
+                    },
+                    {
+                      "name": "tipo_revisao",
+                      "expression": "`tipo_revisao`"
+                    },
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "vl_atual",
+                      "expression": "`vl_atual`"
+                    },
+                    {
+                      "name": "impacto",
+                      "expression": "`impacto`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "contrato",
+                    "displayName": "Contrato"
+                  },
+                  {
+                    "fieldName": "revisao",
+                    "displayName": "Revisão"
+                  },
+                  {
+                    "fieldName": "dt_revisao",
+                    "displayName": "Data"
+                  },
+                  {
+                    "fieldName": "tipo_revisao",
+                    "displayName": "Tipo"
+                  },
+                  {
+                    "fieldName": "fornecedor",
+                    "displayName": "Fornecedor"
+                  },
+                  {
+                    "fieldName": "vl_atual",
+                    "displayName": "Valor após revisão"
+                  },
+                  {
+                    "fieldName": "impacto",
+                    "displayName": "Impacto"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Contratos revisados no período"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 4,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_125",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_proj",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "projeto",
+                      "expression": "`projeto`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "valor",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Valor",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "BRL",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "projeto",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "x-reversed"
+                    }
+                  },
+                  "displayName": "Projeto"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Valor medido por projeto no período"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 4,
+            "width": 2,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_126",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_mes",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "mes",
+                      "expression": "`mes`"
+                    },
+                    {
+                      "name": "contratos",
+                      "expression": "`contratos`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "mes",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Mês"
+                },
+                "y": {
+                  "fieldName": "contratos",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Contratos"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Contratos com medição no mês"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 11,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_127",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_forn",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "ranking",
+                      "expression": "`ranking`"
+                    },
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "valor",
+                      "expression": "`valor`"
+                    },
+                    {
+                      "name": "contratos",
+                      "expression": "`contratos`"
+                    },
+                    {
+                      "name": "pct",
+                      "expression": "`pct`"
+                    },
+                    {
+                      "name": "pct_acumulado",
+                      "expression": "`pct_acumulado`"
+                    },
+                    {
+                      "name": "classe",
+                      "expression": "`classe`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "ranking",
+                    "displayName": "#"
+                  },
+                  {
+                    "fieldName": "fornecedor",
+                    "displayName": "Fornecedor"
+                  },
+                  {
+                    "fieldName": "valor",
+                    "displayName": "Valor"
+                  },
+                  {
+                    "fieldName": "contratos",
+                    "displayName": "Contratos"
+                  },
+                  {
+                    "fieldName": "pct",
+                    "displayName": "% do total"
+                  },
+                  {
+                    "fieldName": "pct_acumulado",
+                    "displayName": "% acumulado"
+                  },
+                  {
+                    "fieldName": "classe",
+                    "displayName": "Classe"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Pareto de fornecedores no período"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 11,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "tbl_128",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ctr_vig",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "filial",
+                      "expression": "`filial`"
+                    },
+                    {
+                      "name": "contrato",
+                      "expression": "`contrato`"
+                    },
+                    {
+                      "name": "revisao",
+                      "expression": "`revisao`"
+                    },
+                    {
+                      "name": "tipo_contrato",
+                      "expression": "`tipo_contrato`"
+                    },
+                    {
+                      "name": "fornecedor",
+                      "expression": "`fornecedor`"
+                    },
+                    {
+                      "name": "dt_inicio",
+                      "expression": "`dt_inicio`"
+                    },
+                    {
+                      "name": "dt_fim",
+                      "expression": "`dt_fim`"
+                    },
+                    {
+                      "name": "vl_original",
+                      "expression": "`vl_original`"
+                    },
+                    {
+                      "name": "vl_atual",
+                      "expression": "`vl_atual`"
+                    },
+                    {
+                      "name": "consumido",
+                      "expression": "`consumido`"
+                    },
+                    {
+                      "name": "saldo",
+                      "expression": "`saldo`"
+                    },
+                    {
+                      "name": "pct_consumido",
+                      "expression": "`pct_consumido`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "filial",
+                    "displayName": "Filial"
+                  },
+                  {
+                    "fieldName": "contrato",
+                    "displayName": "Contrato"
+                  },
+                  {
+                    "fieldName": "revisao",
+                    "displayName": "Revisão"
+                  },
+                  {
+                    "fieldName": "tipo_contrato",
+                    "displayName": "Tipo"
+                  },
+                  {
+                    "fieldName": "fornecedor",
+                    "displayName": "Fornecedor"
+                  },
+                  {
+                    "fieldName": "dt_inicio",
+                    "displayName": "Início"
+                  },
+                  {
+                    "fieldName": "dt_fim",
+                    "displayName": "Fim"
+                  },
+                  {
+                    "fieldName": "vl_original",
+                    "displayName": "Valor original"
+                  },
+                  {
+                    "fieldName": "vl_atual",
+                    "displayName": "Valor atual"
+                  },
+                  {
+                    "fieldName": "consumido",
+                    "displayName": "Consumido"
+                  },
+                  {
+                    "fieldName": "saldo",
+                    "displayName": "Saldo"
+                  },
+                  {
+                    "fieldName": "pct_consumido",
+                    "displayName": "% consumido"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Contratos vigentes no período"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 17,
+            "width": 6,
+            "height": 8
+          }
+        }
+      ]
+    }
+  ]
+}
